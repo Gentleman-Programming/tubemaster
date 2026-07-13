@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 import { z } from "zod";
 import {
   buildGoogleLoopbackAuthUrl,
@@ -56,6 +56,20 @@ type LoopbackCallbackResult = {
   code: string;
   state: string;
 };
+
+type BrowserOpenCommand = {
+  command: string;
+  args: string[];
+  options: {
+    stdio: "ignore";
+    detached: true;
+  };
+};
+
+type BrowserOpenSpawn = typeof spawn;
+type BrowserOpenLogger = (message: string) => void;
+
+const CLI_OAUTH_OPENER_DEBUG_ENV = "CLI_OAUTH_OPENER_DEBUG";
 
 type CliAuthServiceDependencies = {
   storage: ActiveAuthStorage;
@@ -121,20 +135,148 @@ type CliAuthServiceDependencies = {
   }) => Promise<{ redirectUri: string; waitForCallback: Promise<LoopbackCallbackResult> }>;
 };
 
-function defaultOpenBrowser(url: string) {
-  const command = process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
+export function buildBrowserOpenCommand(
+  url: string,
+  platform: NodeJS.Platform = process.platform
+): BrowserOpenCommand {
+  if (platform === "win32") {
+    return {
+      command: "rundll32.exe",
+      args: ["url.dll,FileProtocolHandler", url],
+      options: {
+        stdio: "ignore",
+        detached: true,
+      },
+    };
+  }
+
+  return {
+    command: platform === "darwin" ? "open" : "xdg-open",
+    args: [url],
+    options: {
+      stdio: "ignore",
+      detached: true,
+    },
+  };
+}
+
+function isCliOAuthOpenerDebugEnabled() {
+  return process.env[CLI_OAUTH_OPENER_DEBUG_ENV] === "1";
+}
+
+function shellQuote(value: string) {
+  if (/^[A-Za-z0-9_./:=?&%-]+$/.test(value)) {
+    return value;
+  }
+
+  return `'${value.replaceAll("'", "''")}'`;
+}
+
+function buildReproductionCommand(browserOpenCommand: BrowserOpenCommand) {
+  return [browserOpenCommand.command, ...browserOpenCommand.args]
+    .map(shellQuote)
+    .join(" ");
+}
+
+function logCliOAuthOpenerDebug(
+  logger: BrowserOpenLogger,
+  event: string,
+  details: Record<string, unknown>
+) {
+  logger(JSON.stringify({
+    scope: "cli-oauth-opener",
+    event,
+    timestamp: new Date().toISOString(),
+    ...details,
+  }));
+}
+
+function serializeChildProcessError(error: Error & { code?: string }) {
+  return {
+    name: error.name,
+    message: error.message,
+    code: error.code,
+  };
+}
+
+function attachCliOAuthOpenerDebugHandlers(args: {
+  child: ChildProcess;
+  logger: BrowserOpenLogger;
+}) {
+  const childPid = () => args.child.pid ?? null;
+
+  args.child.on("spawn", () => {
+    logCliOAuthOpenerDebug(args.logger, "spawn", { childPid: childPid() });
+  });
+  args.child.on("error", (error) => {
+    logCliOAuthOpenerDebug(args.logger, "error", {
+      childPid: childPid(),
+      error: serializeChildProcessError(error),
+    });
+  });
+  args.child.on("exit", (code, signal) => {
+    logCliOAuthOpenerDebug(args.logger, "exit", { childPid: childPid(), code, signal });
+  });
+  args.child.on("close", (code, signal) => {
+    logCliOAuthOpenerDebug(args.logger, "close", { childPid: childPid(), code, signal });
+  });
+}
+
+export function openBrowserForCliOAuth(
+  url: string,
+  deps: {
+    spawnProcess?: BrowserOpenSpawn;
+    logger?: BrowserOpenLogger;
+  } = {}
+) {
+  const browserOpenCommand = buildBrowserOpenCommand(url);
+  const spawnProcess = deps.spawnProcess ?? spawn;
+  const logger = deps.logger ?? console.error;
+  const debugEnabled = isCliOAuthOpenerDebugEnabled();
+
+  if (debugEnabled) {
+    logCliOAuthOpenerDebug(logger, "before-spawn", {
+      command: browserOpenCommand.command,
+      args: browserOpenCommand.args,
+      options: browserOpenCommand.options,
+      platform: {
+        platform: process.platform,
+        arch: process.arch,
+        nodeVersion: process.version,
+        execPath: process.execPath,
+        comSpec: process.env.ComSpec ?? null,
+      },
+      oauthUrl: url,
+      reproductionCommand: buildReproductionCommand(browserOpenCommand),
+    });
+  }
 
   return new Promise<void>((resolve, reject) => {
-    const child = spawn(command, [url], {
-      stdio: "ignore",
-      shell: process.platform === "win32",
-      detached: true,
-    });
+    const child = spawnProcess(
+      browserOpenCommand.command,
+      browserOpenCommand.args,
+      browserOpenCommand.options
+    );
+
+    if (debugEnabled) {
+      attachCliOAuthOpenerDebugHandlers({ child, logger });
+    }
 
     child.on("error", reject);
     child.unref();
+
+    if (debugEnabled) {
+      logCliOAuthOpenerDebug(logger, "opener-promise-resolve", {
+        childPid: child.pid ?? null,
+      });
+    }
+
     resolve();
   });
+}
+
+function defaultOpenBrowser(url: string) {
+  return openBrowserForCliOAuth(url);
 }
 
 function createLoopbackCallbackServer(args: {
@@ -440,7 +582,7 @@ export function createCliAuthService(
         state,
         codeChallenge: pkce.challenge,
       });
-
+      console.log("\nOAuth URL:\n", authUrl, "\n");
       await resolvedDeps.openBrowser(authUrl);
       const callback = await callbackServer.waitForCallback;
 

@@ -67,6 +67,7 @@ NEXTAUTH_SECRET=replace-with-a-long-random-secret
 
 # Optional
 # CLI_OAUTH_CALLBACK_PORT=8787
+# CLI_OAUTH_OPENER_DEBUG=1
 # YOUTUBE_TRANSCRIPT_PROVIDER=youtube-captions
 # METADATA_GENERATOR_MODE=rule-based
 # METADATA_GENERATOR_RAW_OUTPUT={"finalTitle":"...","description":"...","promptVersion":"..."}
@@ -101,6 +102,10 @@ Loopback OAuth (opens browser):
 ```bash
 npm run cli:video-metadata -- auth login
 ```
+
+On Windows, CLI login opens the OAuth URL with `rundll32.exe url.dll,FileProtocolHandler <url>`. If the browser does not open, copy the printed OAuth URL from the console and open it manually; the URL is intentionally kept visible as a fallback login path.
+
+For maintainer diagnostics, run the same command with `CLI_OAUTH_OPENER_DEBUG=1` to print opener command, process, and lifecycle details to stderr.
 
 Device flow alternative:
 

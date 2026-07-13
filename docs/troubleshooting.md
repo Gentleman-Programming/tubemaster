@@ -21,7 +21,28 @@ Checks:
    - `http://127.0.0.1:8787` (or your configured callback port)
 2. Retry CLI login:
    - `npm run cli:video-metadata -- auth login`
-3. If callback port is custom, set `CLI_OAUTH_CALLBACK_PORT` and update redirect URI.
+3. If the browser does not open, copy the OAuth URL printed in the console and open it manually.
+4. If callback port is custom, set `CLI_OAUTH_CALLBACK_PORT` and update redirect URI.
+
+### CLI browser opener diagnostics
+
+The CLI keeps the OAuth URL in console output so login still works when the OS browser opener fails.
+
+| Platform | Opener command | Maintenance note |
+| --- | --- | --- |
+| Windows | `rundll32.exe url.dll,FileProtocolHandler <url>` | Validated with and without debug instrumentation. Preserve this form; alternatives such as shell-only launchers can fail in packaged or npm-run contexts. |
+| macOS | `open <url>` | Standard OS opener. |
+| Linux | `xdg-open <url>` | Requires a desktop opener to be available. |
+
+Troubleshooting flow:
+
+1. Run `npm run cli:video-metadata -- auth login`.
+2. If no browser opens, manually open the OAuth URL printed by the command.
+3. If maintaining the opener code, enable diagnostics:
+   - PowerShell: `$env:CLI_OAUTH_OPENER_DEBUG="1"; npm run cli:video-metadata -- auth login`
+   - cmd.exe: `set CLI_OAUTH_OPENER_DEBUG=1 && npm run cli:video-metadata -- auth login`
+4. Check stderr for JSON lines with `scope: "cli-oauth-opener"`.
+5. Keep `CLI_OAUTH_OPENER_DEBUG` unset for normal use; it is intentionally opt-in because it prints the OAuth URL and process details.
 
 ### `AUTH_USER_NOT_FOUND`
 

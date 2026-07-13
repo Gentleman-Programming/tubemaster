@@ -74,6 +74,7 @@ See full env setup + Google credentials mapping: **[docs/getting-started.md#2-lo
 - `METADATA_GENERATOR_MODE` (`rule-based` by default, `raw-json` for strict output checks)
 - `METADATA_GENERATOR_RAW_OUTPUT` (used only when mode is `raw-json`)
 - `CLI_OAUTH_CALLBACK_PORT` (`8787` by default; if changed, update OAuth redirect URI accordingly)
+- `CLI_OAUTH_OPENER_DEBUG=1` (maintenance-only diagnostics for CLI browser launch issues)
 
 ## Contracts and Safety Guarantees
 
