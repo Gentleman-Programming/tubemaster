@@ -4,7 +4,7 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "set NEXT_TURBOPACK_ROOT=. && next dev -p 4009",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

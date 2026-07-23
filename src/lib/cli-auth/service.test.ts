@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
+import { EventEmitter } from "node:events";
 import test from "node:test";
 import { DomainError } from "@/lib/video-metadata/contracts";
-import { createCliAuthService } from "./service";
+import { buildBrowserOpenCommand, createCliAuthService, openBrowserForCliOAuth } from "./service";
 import type { ActiveAuthStorage } from "./storage";
 
 function makeStorageStub(initialUserId: string | null = null): ActiveAuthStorage {
@@ -256,13 +257,177 @@ test("loginDevice persists user and marks active context", async () => {
   assert.equal(active?.activeUserId, "user-device");
 });
 
+test("buildBrowserOpenCommand uses rundll32 FileProtocolHandler on Windows", () => {
+  const url = "https://accounts.google.com/o/oauth2/v2/auth?client_id=client&scope=openid%20email&state=abc";
+
+  const command = buildBrowserOpenCommand(url, "win32");
+
+  assert.equal(command.command, "rundll32.exe");
+  assert.deepEqual(command.args, ["url.dll,FileProtocolHandler", url]);
+  assert.deepEqual(command.options, {
+    stdio: "ignore",
+    detached: true,
+  });
+});
+
+test("buildBrowserOpenCommand passes Windows OAuth URL as a separate argument", () => {
+  const url = "https://accounts.google.com/o/oauth2/v2/auth?client_id=client&scope=openid%20email&state=abc&redirect_uri=http%3A%2F%2F127.0.0.1%3A8787%2Fcallback&prompt=consent";
+
+  const command = buildBrowserOpenCommand(url, "win32");
+
+  assert.equal(command.args.at(-2), "url.dll,FileProtocolHandler");
+  assert.equal(command.args.at(-1), url);
+  assert.ok(!command.args.at(-2)?.includes(url));
+});
+
+test("buildBrowserOpenCommand preserves macOS and Linux openers", () => {
+  const url = "https://example.com/oauth?state=abc&scope=openid";
+
+  assert.deepEqual(buildBrowserOpenCommand(url, "darwin"), {
+    command: "open",
+    args: [url],
+    options: {
+      stdio: "ignore",
+      detached: true,
+    },
+  });
+  assert.deepEqual(buildBrowserOpenCommand(url, "linux"), {
+    command: "xdg-open",
+    args: [url],
+    options: {
+      stdio: "ignore",
+      detached: true,
+    },
+  });
+});
+
+test("openBrowserForCliOAuth emits opt-in debug details before spawn", async () => {
+  const originalDebug = process.env.CLI_OAUTH_OPENER_DEBUG;
+  process.env.CLI_OAUTH_OPENER_DEBUG = "1";
+  const logs: string[] = [];
+  const child = new EventEmitter() as EventEmitter & { pid: number; unref: () => void };
+  child.pid = 1234;
+  child.unref = () => undefined;
+  let receivedCommand: string | null = null;
+  let receivedArgs: readonly string[] | null = null;
+  const spawnProcess = ((command: string, args: readonly string[]) => {
+    receivedCommand = command;
+    receivedArgs = args;
+    return child;
+  }) as typeof import("node:child_process").spawn;
+
+  try {
+    const url = "https://accounts.google.com/o/oauth2/v2/auth?client_id=client&scope=openid%20email&state=abc";
+
+    await openBrowserForCliOAuth(url, {
+      spawnProcess,
+      logger: (message) => logs.push(message),
+    });
+
+    assert.equal(receivedCommand, "rundll32.exe");
+    assert.equal(receivedArgs?.at(-2), "url.dll,FileProtocolHandler");
+    assert.equal(receivedArgs?.at(-1), url);
+    const beforeSpawn = JSON.parse(logs[0]);
+    assert.equal(beforeSpawn.scope, "cli-oauth-opener");
+    assert.equal(beforeSpawn.event, "before-spawn");
+    assert.equal(beforeSpawn.command, "rundll32.exe");
+    assert.equal(beforeSpawn.oauthUrl, url);
+    assert.equal(beforeSpawn.platform.platform, process.platform);
+    assert.match(beforeSpawn.reproductionCommand, /^rundll32\.exe /);
+    assert.match(beforeSpawn.reproductionCommand, /url\.dll,FileProtocolHandler/);
+    assert.match(beforeSpawn.reproductionCommand, /https:\/\/accounts\.google\.com/);
+    assert.equal(JSON.parse(logs.at(-1) ?? "{}").event, "opener-promise-resolve");
+  } finally {
+    if (originalDebug === undefined) {
+      delete process.env.CLI_OAUTH_OPENER_DEBUG;
+    } else {
+      process.env.CLI_OAUTH_OPENER_DEBUG = originalDebug;
+    }
+  }
+});
+
+test("openBrowserForCliOAuth debug logs child process lifecycle events", async () => {
+  const originalDebug = process.env.CLI_OAUTH_OPENER_DEBUG;
+  process.env.CLI_OAUTH_OPENER_DEBUG = "1";
+  const logs: string[] = [];
+  const child = new EventEmitter() as EventEmitter & { pid: number; unref: () => void };
+  child.pid = 9876;
+  child.unref = () => undefined;
+  const spawnProcess = (() => child) as typeof import("node:child_process").spawn;
+
+  try {
+    await openBrowserForCliOAuth("https://example.com/oauth?state=abc", {
+      spawnProcess,
+      logger: (message) => logs.push(message),
+    });
+
+    child.emit("spawn");
+    child.emit("error", Object.assign(new Error("opener failed"), { code: "ENOENT" }));
+    child.emit("exit", 0, null);
+    child.emit("close", 0, null);
+
+    const events = logs.map((message) => JSON.parse(message));
+    assert.deepEqual(events.map((entry) => entry.event), [
+      "before-spawn",
+      "opener-promise-resolve",
+      "spawn",
+      "error",
+      "exit",
+      "close",
+    ]);
+    assert.equal(events.find((entry) => entry.event === "spawn")?.childPid, 9876);
+    assert.equal(events.find((entry) => entry.event === "error")?.error.code, "ENOENT");
+    assert.equal(events.find((entry) => entry.event === "error")?.error.message, "opener failed");
+    assert.equal(events.find((entry) => entry.event === "exit")?.code, 0);
+    assert.equal(events.find((entry) => entry.event === "close")?.code, 0);
+  } finally {
+    if (originalDebug === undefined) {
+      delete process.env.CLI_OAUTH_OPENER_DEBUG;
+    } else {
+      process.env.CLI_OAUTH_OPENER_DEBUG = originalDebug;
+    }
+  }
+});
+
+test("openBrowserForCliOAuth stays quiet when opener debug is disabled", async () => {
+  const originalDebug = process.env.CLI_OAUTH_OPENER_DEBUG;
+  delete process.env.CLI_OAUTH_OPENER_DEBUG;
+  const logs: string[] = [];
+  const child = new EventEmitter() as EventEmitter & { pid: number; unref: () => void };
+  child.pid = 4321;
+  child.unref = () => undefined;
+  const spawnProcess = (() => child) as typeof import("node:child_process").spawn;
+
+  try {
+    await openBrowserForCliOAuth("https://example.com/oauth?state=abc", {
+      spawnProcess,
+      logger: (message) => logs.push(message),
+    });
+
+    child.emit("spawn");
+    child.emit("exit", 0, null);
+    child.emit("close", 0, null);
+
+    assert.deepEqual(logs, []);
+  } finally {
+    if (originalDebug === undefined) {
+      delete process.env.CLI_OAUTH_OPENER_DEBUG;
+    } else {
+      process.env.CLI_OAUTH_OPENER_DEBUG = originalDebug;
+    }
+  }
+});
+
 test("login uses fixed loopback redirect URI from callback server", async () => {
   const storage = makeStorageStub();
   let receivedRedirectUri: string | null = null;
+  let openedUrl: string | null = null;
 
   const service = createCliAuthService({
     storage,
-    openBrowser: async () => undefined,
+    openBrowser: async (url) => {
+      openedUrl = url;
+    },
     oauth: {
       generateState: () => "state",
       generatePkcePair: () => ({ verifier: "verifier", challenge: "challenge" }),
@@ -315,6 +480,7 @@ test("login uses fixed loopback redirect URI from callback server", async () => 
   const result = await service.login();
   assert.equal(result.method, "loopback");
   assert.equal(receivedRedirectUri, "http://127.0.0.1:8787");
+  assert.equal(openedUrl, "http://example.com");
 });
 
 test("revoke fails if remote revoke fails and keeps local tokens untouched", async () => {
