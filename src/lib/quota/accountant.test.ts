@@ -130,3 +130,9 @@ test("quota bucket timezone defaults safely and is deterministic", () => {
   );
   assert.equal(getQuotaBucketStart(new Date("2026-01-02T07:30:00.000Z"), "UTC"), "2026-01-02");
 });
+
+test('"reports.query" quota cost exists and is a valid QuotaOperation', () => {
+  assert.equal(YOUTUBE_QUOTA_COSTS["reports.query"], 1);
+  const validOps: QuotaOperation[] = ["reports.query"];
+  assert.ok(validOps.every((op) => op in YOUTUBE_QUOTA_COSTS));
+});
