@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { DomainError } from "../../video-metadata/contracts";
 import { createYoutubeAnalyticsSummaryService } from "../services";
+import { createYoutubeAnalyticsApi } from "../adapters/youtube-analytics-api";
 import type { AnalyticsSummaryDependencies } from "../contracts";
 
 const args = {
@@ -142,4 +143,30 @@ test("records quota for success and failure, isolating accountant errors", async
     }),
     "analytics-summary",
   );
+});
+
+test("maps malformed provider rows to a typed service error", async () => {
+  const result = await createYoutubeAnalyticsSummaryService({
+    ...base,
+    youtubeAnalyticsApi: createYoutubeAnalyticsApi(() => ({
+      reports: {
+        query: async () => ({
+          columnHeaders: [
+            { name: "day" },
+            { name: "views" },
+            { name: "likes" },
+            { name: "comments" },
+            { name: "estimatedMinutesWatched" },
+          ],
+          rows: [["2025-01-01", "not-a-number", "2", "1", "5.5"]],
+        }),
+      },
+    })),
+  })(args);
+
+  assert.deepEqual(result, {
+    kind: "analytics-summary-error",
+    code: "ANALYTICS_API_ERROR",
+    message: "YouTube Analytics request failed",
+  });
 });

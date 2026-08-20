@@ -74,3 +74,30 @@ test("normalizes missing rows to empty and rejects provider errors", async () =>
     (e: unknown) => e instanceof DomainError,
   );
 });
+
+test("sanitizes 403, 5xx, and network provider failures", async () => {
+  for (const failure of [
+    Object.assign(new Error("forbidden secret"), { response: { status: 403 } }),
+    Object.assign(new Error("server secret"), { response: { status: 503 } }),
+    new Error("network secret"),
+  ]) {
+    await assert.rejects(
+      () =>
+        createYoutubeAnalyticsApi(() => ({
+          reports: {
+            query: async () => {
+              throw failure;
+            },
+          },
+        })).query(query),
+      (e: unknown) => {
+        assert.ok(e instanceof DomainError);
+        assert.equal(e.code, "unauthorized");
+        assert.equal(e.message, "YouTube Analytics request failed");
+        assert.equal(e.details, undefined);
+        assert.equal(e.message.includes("secret"), false);
+        return true;
+      },
+    );
+  }
+});

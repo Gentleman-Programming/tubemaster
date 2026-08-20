@@ -54,3 +54,21 @@ test("maps auth, validation, scope, provider and success statuses", async () => 
     200,
   );
 });
+
+test("sanitizes unexpected core exceptions with a 500 response", async () => {
+  const response = await createAnalyticsGetHandler({
+    getSession: session,
+    core: {
+      fetchAnalyticsSummary: async () => {
+        throw new Error("sensitive provider details");
+      },
+    },
+  })(url);
+
+  assert.equal(response.status, 500);
+  assert.deepEqual(await response.json(), {
+    kind: "analytics-summary-error",
+    code: "ANALYTICS_API_ERROR",
+    message: "Internal error",
+  });
+});
