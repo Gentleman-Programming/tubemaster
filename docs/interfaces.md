@@ -126,6 +126,12 @@ All routes are App Router handlers and require authenticated session user.
   - Results always use the authenticated session user; scope overrides are rejected.
   - Values are estimated recorded usage, not authoritative remaining YouTube quota.
 
+### YouTube Analytics summary API
+
+- `GET /api/youtube/analytics?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD` requires a session user and Google authorization with `yt-analytics.readonly` scope. Dates must span 1–31 UTC calendar days, without future dates.
+- Queries the authenticated user's channel (`channel==MINE`) by `day`, with fixed metrics `views,likes,comments,estimatedMinutesWatched`; caller-supplied `channelId` is rejected, even when empty. A successful response is `{ "kind": "analytics-summary", "startDate": "...", "endDate": "...", "days": [...] }`; no data returns `"days": []`.
+- Errors use `{ "kind": "analytics-summary-error", "code": "...", "message": "..." }`: 401 `AUTH_REQUIRED`, 403 `AUTH_SCOPE_INSUFFICIENT` (includes `requiredScopes: ["yt-analytics.readonly"]` and reauthorization guidance), 422 `INVALID_INPUT`, or 502 `ANALYTICS_API_ERROR`. Unexpected failures return a sanitized 500; provider details are never exposed.
+
 ### Playlist / video API used by UI
 
 - `GET /api/youtube/videos`
