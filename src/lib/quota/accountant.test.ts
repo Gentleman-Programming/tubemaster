@@ -111,6 +111,7 @@ test("explicit YouTube costs cover every supported operation", () => {
     "playlistItems.delete": 50,
     "captions.list": 50,
     "captions.download": 200,
+    "reports.query": 1,
   };
   assert.deepEqual(YOUTUBE_QUOTA_COSTS, expected);
 });

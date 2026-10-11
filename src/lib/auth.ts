@@ -4,6 +4,8 @@ import { google } from "googleapis";
 import { createHash, randomBytes } from "node:crypto";
 import { upsertUserOAuthOnSignIn } from "./db";
 
+export const YOUTUBE_ANALYTICS_READ_SCOPE =
+  "https://www.googleapis.com/auth/yt-analytics.readonly";
 export const YOUTUBE_READ_SCOPE =
   "https://www.googleapis.com/auth/youtube.readonly";
 export const YOUTUBE_WRITE_SCOPE = "https://www.googleapis.com/auth/youtube";

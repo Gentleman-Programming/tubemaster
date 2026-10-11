@@ -1,5 +1,6 @@
 export const YOUTUBE_QUOTA_COSTS = {
   "channels.list": 1,
+  "reports.query": 1,
   "videos.list": 1,
   "videos.update": 50,
   "playlists.list": 1,
@@ -30,7 +31,7 @@ export type QuotaRecord = {
 };
 
 export type QuotaAccountant = {
-  record(entry: QuotaRecord): void;
+  record(entry: QuotaRecord): void | Promise<void>;
 };
 
 /** Process-local estimate only; this is not authoritative global quota enforcement. */
