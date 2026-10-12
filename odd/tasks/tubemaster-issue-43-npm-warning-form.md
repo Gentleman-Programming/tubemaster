@@ -22,5 +22,5 @@ Add a YAML Issue Form for reproducible npm and dependency deprecation warnings.
 ## Delivery evidence
 - Issue: https://github.com/Gentleman-Programming/tubemaster/issues/43
 - Branch: `chore/npm-warnings-issue-form`
-- Commit: pending
-- Pull request: pending
+- Commit: `1bdfc2c` (`chore(repo): add npm warning issue form`)
+- Pull request: https://github.com/Gentleman-Programming/tubemaster/pull/44
