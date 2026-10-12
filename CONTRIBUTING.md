@@ -31,6 +31,8 @@ npm run test
 npm run lint
 ```
 
+During installation, npm may warn that `node-domexception` is deprecated. It arrives transitively through `@libsql/client`; the warning is upstream-owned, and this project intentionally does not suppress or override it.
+
 ## Contribution standards
 
 - **Preserve contracts**: CLI/MCP JSON envelopes should stay backward-compatible unless the issue explicitly proposes a breaking change.
