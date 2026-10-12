@@ -1,6 +1,11 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
+import {
+  selectLoadedVideos,
+  serializeSelectedVideosCsv,
+  serializeSelectedVideosJson,
+} from "@/lib/reporting/selected-video-export";
 
 type Video = {
   videoId: string;
@@ -106,6 +111,26 @@ export function ManualMode() {
       }
       return next;
     });
+  }
+
+  const selectedLoadedVideos = useMemo(
+    () => selectLoadedVideos(videos, selected),
+    [videos, selected]
+  );
+
+  function downloadSelection(format: "json" | "csv") {
+    if (selectedLoadedVideos.length === 0) return;
+    const content = format === "json"
+      ? serializeSelectedVideosJson(selectedLoadedVideos)
+      : serializeSelectedVideosCsv(selectedLoadedVideos);
+    const mime = format === "json" ? "application/json" : "text/csv";
+    const url = URL.createObjectURL(new Blob([content], { type: `${mime};charset=utf-8` }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `tubemaster-selected-videos.${format}`;
+    link.click();
+    // Let the browser start the download before releasing the object URL.
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 
   const filteredVideos = useMemo(() => {
@@ -282,7 +307,7 @@ export function ManualMode() {
 
             <div className="flex items-center gap-2 text-xs text-zinc-500">
               <span className="h-px flex-1 bg-zinc-800" />
-              <span>or paste ID/URL</span>
+              <span>or paste Playlist ID/URL</span>
               <span className="h-px flex-1 bg-zinc-800" />
             </div>
 
@@ -369,6 +394,22 @@ export function ManualMode() {
                 : videos.length > 0
                   ? "Refresh"
                   : "Load My Videos"}
+            </button>
+            <button
+              type="button"
+              onClick={() => downloadSelection("json")}
+              disabled={selectedLoadedVideos.length === 0}
+              className="rounded-lg bg-zinc-800 px-3 py-2 text-xs font-medium hover:bg-zinc-700 disabled:opacity-50"
+            >
+              Export JSON
+            </button>
+            <button
+              type="button"
+              onClick={() => downloadSelection("csv")}
+              disabled={selectedLoadedVideos.length === 0}
+              className="rounded-lg bg-zinc-800 px-3 py-2 text-xs font-medium hover:bg-zinc-700 disabled:opacity-50"
+            >
+              Export CSV
             </button>
             {videos.length > 0 && (
               <span className="text-sm text-zinc-400">

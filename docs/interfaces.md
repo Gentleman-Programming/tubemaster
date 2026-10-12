@@ -22,6 +22,7 @@ The default metadata logger streams JSON lines to stderr. Playlist events are em
 
 - **Manual**
   - Browse your videos (`/api/youtube/videos`) or paste IDs/URLs in batch mode.
+  - In Browse, load videos and select rows, then use **Export JSON** or **Export CSV**. Exports include only selected loaded videos, even when hidden by the current title search; stale selections and pasted batch IDs are excluded. Both buttons are disabled without selected loaded videos. Downloads are generated locally, read-only, without another API request: `tubemaster-selected-videos.json` (`application/json;charset=utf-8`) or `tubemaster-selected-videos.csv` (`text/csv;charset=utf-8`). Fields are `videoId`, `title`, `description`, `publishedAt` in loaded order. JSON preserves values exactly; CSV uses the same header, CRLF rows, standard quoting, and prefixes a single quote to cells whose first non-whitespace character is `=`, `+`, `-`, or `@` to reduce spreadsheet formula execution risk (so CSV may not round-trip those values exactly).
   - Add/remove videos from playlists (`/api/youtube/add-to-playlist`, `/api/youtube/remove-from-playlist`).
   - Create playlist from UI (`/api/youtube/create-playlist`).
 - **Rules**
