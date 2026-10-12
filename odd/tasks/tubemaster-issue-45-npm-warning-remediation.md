@@ -24,5 +24,5 @@ Remove the unused `drizzle-kit` dependency and document the remaining upstream w
 ## Delivery evidence
 - Issue: https://github.com/Gentleman-Programming/tubemaster/issues/45
 - Branch: `chore/remove-unused-drizzle-kit`
-- Commit: pending
+- Commit: `71ff106` (`chore(deps): remove unused drizzle-kit`)
 - Pull request: not opened (per request)
