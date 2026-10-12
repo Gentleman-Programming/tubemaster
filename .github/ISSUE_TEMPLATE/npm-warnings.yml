@@ -1,0 +1,40 @@
+name: npm deprecation warnings
+description: Report reproducible npm install or dependency deprecation warnings
+title: "build(npm): "
+body:
+  - type: textarea
+    id: warnings
+    attributes:
+      label: npm warnings
+      description: Paste the complete warning output from a clean npm install.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependency-chain
+    attributes:
+      label: Dependency chain
+      description: Explain which direct or transitive dependencies introduce the warnings.
+      placeholder: |
+        direct-package -> transitive-package
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-outcome
+    attributes:
+      label: Expected outcome
+      description: Describe when this warning should be considered resolved.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: verification
+    attributes:
+      label: Verification
+      options:
+        - label: I reproduced this with a clean npm install.
+          required: true
+        - label: I checked that no existing issue covers these warnings.
+          required: true
