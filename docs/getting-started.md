@@ -4,6 +4,11 @@
 
 This guide gets you from a fresh machine to a working TubeMaster setup for **Web UI + CLI + MCP** channel operations.
 
+## Prerequisites
+
+- Node.js `>=20.9.0` (required by Next.js 16.2.2)
+- npm (bundled with Node.js)
+
 ## 1) Google Cloud Console setup
 
 TubeMaster uses Google OAuth + YouTube Data API v3. You must configure both.
@@ -82,7 +87,7 @@ Required variables are used by:
 ## 3) Install and run
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
