@@ -10,6 +10,6 @@ Tasks:
 3. [ ] Run UI and full validation, including manual browser dry-run.
 
 Validation: focused UI 8/8 after timezone dropdown correction; serial full TypeScript tests 301/301; TypeScript; scoped ESLint; and diff check passed. Parallel combined runner exposed existing SQLite BUSY file-level failures; serial checks passed.
-Commits: `14c8bb4` (`feat(dashboard): add scheduling confirmation UX`), `7bf2e6f` (`fix(dashboard): use timezone dropdown`), `c0d2657` (`fix(dashboard): isolate schedule form fields`).
+Commits: `14c8bb4` (`feat(dashboard): add scheduling confirmation UX`), `7bf2e6f` (`fix(dashboard): use timezone dropdown`), `c0d2657` (`fix(dashboard): isolate schedule form fields`), `6d1666d` (`fix(dashboard): restore video ID text input`).
 
 Status: implemented; manual browser dry-run pending.
