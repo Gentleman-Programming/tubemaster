@@ -9,7 +9,7 @@ Tasks:
 2. [x] Wire preview and confirmation states.
 3. [ ] Run UI and full validation, including authenticated manual dry-run.
 
-Validation: private-video route filter test plus 9 UI tests passed; serial full TypeScript tests 301/301; TypeScript; scoped ESLint; and diff check passed. Parallel combined runner exposed existing SQLite BUSY file-level failures; serial checks passed.
-Commits: `14c8bb4` (`feat(dashboard): add scheduling confirmation UX`), `7bf2e6f` (`fix(dashboard): use timezone dropdown`), `c0d2657` (`fix(dashboard): isolate schedule form fields`), `6d1666d` (`fix(dashboard): restore video ID text input`), `f50b31c` (`feat(dashboard): select private videos for scheduling`).
+Validation: private-video route filter test plus 11 UI tests passed; serial full TypeScript tests 301/301 before explicit time selectors; TypeScript; scoped ESLint; and diff check passed. Parallel combined runner exposed existing SQLite BUSY file-level failures; serial checks passed.
+Commits: `14c8bb4` (`feat(dashboard): add scheduling confirmation UX`), `7bf2e6f` (`fix(dashboard): use timezone dropdown`), `c0d2657` (`fix(dashboard): isolate schedule form fields`), `6d1666d` (`fix(dashboard): restore video ID text input`), `f50b31c` (`feat(dashboard): select private videos for scheduling`), `3a4308e` (`fix(dashboard): use explicit schedule time selectors`).
 
 Status: implemented; manual browser dry-run pending.
