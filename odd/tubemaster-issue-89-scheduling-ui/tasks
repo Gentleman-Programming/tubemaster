@@ -1,0 +1,15 @@
+# TubeMaster issue #89 — task mirror
+
+Goal: expose guarded scheduling preview and confirmation in the authenticated dashboard.
+
+Specs: accessible date/time controls plus a timezone dropdown; UTC preview; explicit confirmation with exact preview token; safe success/provider/uncertain states; preserve upload behavior; no autonomous publishing or job runner.
+
+Tasks:
+1. [x] Add scheduling controls to dashboard, including private-video selector.
+2. [x] Wire preview and confirmation states.
+3. [ ] Run UI and full validation, including authenticated manual dry-run.
+
+Validation: private-video route filter test plus 11 focused UI tests passed; serial full suite 301/301 and latest UI suite 10/10 passed after preserving partial hour/minute state; TypeScript; scoped ESLint; and diff check passed. Authenticated Chrome dry-run verified video selection, 19:30 persistence, UTC preview, and no-change response without confirmation. Parallel combined runner exposed existing SQLite BUSY file-level failures; serial checks passed. Commit: `dee2053` (`fix(dashboard): preserve partial schedule time selections`).
+Commits: `14c8bb4` (`feat(dashboard): add scheduling confirmation UX`), `7bf2e6f` (`fix(dashboard): use timezone dropdown`), `c0d2657` (`fix(dashboard): isolate schedule form fields`), `6d1666d` (`fix(dashboard): restore video ID text input`), `f50b31c` (`feat(dashboard): select private videos for scheduling`), `3a4308e` (`fix(dashboard): use explicit schedule time selectors`).
+
+Status: implemented; manual browser dry-run pending.

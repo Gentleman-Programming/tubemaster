@@ -27,6 +27,68 @@ export function uploadMessage(reply: UploadReply, dryRun: boolean): string {
   return "Unexpected response. Check your YouTube channel before attempting another upload; do not retry automatically.";
 }
 
+export type ScheduleFields = { videoId: string; expectedChannelId: string; date: string; time: string; timezone: string };
+export function scheduleInputType(key: keyof ScheduleFields): "text" | "date" | "time" {
+  if (key === "date") return "date";
+  if (key === "time") return "time";
+  return "text";
+}
+
+export function scheduleTimeValue(hour: string, minute: string): string {
+  return /^([01]\d|2[0-3])$/.test(hour) && /^[0-5]\d$/.test(minute) ? `${hour}:${minute}` : "";
+}
+
+export const scheduleTimezoneOptions = [
+  { value: "UTC", label: "UTC" },
+  { value: "America/Los_Angeles", label: "Pacific Time (US)" },
+  { value: "America/Denver", label: "Mountain Time (US)" },
+  { value: "America/Chicago", label: "Central Time (US)" },
+  { value: "America/New_York", label: "Eastern Time (US)" },
+  { value: "America/Mexico_City", label: "Mexico City" },
+  { value: "America/Sao_Paulo", label: "São Paulo" },
+  { value: "Europe/London", label: "London" },
+  { value: "Europe/Madrid", label: "Madrid" },
+  { value: "Europe/Paris", label: "Paris" },
+  { value: "Europe/Berlin", label: "Berlin" },
+  { value: "Africa/Johannesburg", label: "Johannesburg" },
+  { value: "Asia/Dubai", label: "Dubai" },
+  { value: "Asia/Kolkata", label: "Kolkata" },
+  { value: "Asia/Shanghai", label: "Shanghai" },
+  { value: "Asia/Tokyo", label: "Tokyo" },
+  { value: "Australia/Sydney", label: "Sydney" },
+] as const;
+type ScheduleReply = { status?: string; error?: string; outcome?: string; operationId?: string; publishAtUtc?: string; confirmationToken?: string; channelId?: string; videoId?: string };
+type ScheduleVideoOption = { videoId: string; title: string; publishedAt: string };
+type SchedulePreview = { fields: ScheduleFields; publishAtUtc: string; confirmationToken: string; operationId: string };
+
+export function validateSchedule(fields: ScheduleFields): Partial<Record<keyof ScheduleFields, string>> {
+  const errors: Partial<Record<keyof ScheduleFields, string>> = {};
+  if (!fields.videoId.trim()) errors.videoId = "Enter an existing private video ID.";
+  if (!fields.expectedChannelId.trim()) errors.expectedChannelId = "An active channel is required.";
+  const parsed = Date.parse(`${fields.date}T00:00:00Z`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fields.date) || !Number.isFinite(parsed) || new Date(parsed).toISOString().slice(0, 10) !== fields.date) errors.date = "Enter a valid date.";
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(fields.time)) errors.time = "Enter a valid time.";
+  try { new Intl.DateTimeFormat("en-US", { timeZone: fields.timezone }); } catch { errors.timezone = "Enter a valid IANA timezone, such as America/New_York."; }
+  return errors;
+}
+
+export function schedulePayload(fields: ScheduleFields, dryRun: boolean, confirmationToken?: string) {
+  return { videoId: fields.videoId.trim(), expectedChannelId: fields.expectedChannelId, timezone: fields.timezone, publishAt: `${fields.date}T${fields.time}:00`, dryRun, confirmed: !dryRun, ...(!dryRun ? { confirmationToken } : {}) };
+}
+
+export function scheduleMessage(reply: ScheduleReply, dryRun: boolean): string {
+  const operation = reply.operationId ? ` Operation ID: ${reply.operationId}.` : "";
+  if (reply.outcome === "unknown") return `Scheduling outcome is uncertain.${operation} Check the video in YouTube before trying again. Do not retry automatically.`;
+  if (reply.error) {
+    if (reply.error === "unauthorized" || reply.error.startsWith("AUTH_")) return `Session or YouTube authorization expired. Sign in again before scheduling.${operation}`;
+    if (reply.error === "validation_failed" || reply.error.startsWith("WRITE_CHANNEL_")) return `Scheduling request rejected. Check the private video, channel and local time, then preview again.${operation}`;
+    return `Scheduling provider could not complete the request.${operation} Check YouTube before attempting another request.`;
+  }
+  if (dryRun && reply.status === "validated") return `Schedule validated. No change was made.${operation} Review the UTC time and confirm below.`;
+  if (!dryRun && reply.status === "scheduled") return `Video scheduled for ${reply.publishAtUtc ?? "the confirmed UTC time"}.${operation}`;
+  return `Unexpected scheduling response.${operation} Check YouTube before attempting another request; do not retry automatically.`;
+}
+
 export function stagingFailureMessage(status: number): string {
   if (status === 401) return "Session expired. Sign in again before staging.";
   if (status === 400) return "Video could not be staged. Check its extension and size, then try again.";
@@ -57,10 +119,28 @@ export function DashboardUploadForm() {
       if (!data.channel?.id) { setChannelStatus("No active channel found. Switch channel to continue."); return; }
       setChannel(data.channel);
       setFields((current) => ({ ...current, expectedChannelId: data.channel!.id }));
+      setSchedule((current) => ({ ...current, expectedChannelId: data.channel!.id }));
       setChannelStatus("");
     }).catch(() => { if (live) setChannelStatus("Unable to load active channel. Refresh or switch channel to continue."); });
     return () => { live = false; };
   }, []);
+
+  useEffect(() => {
+    if (!channel) return;
+    let live = true;
+    setScheduleVideosLoading(true);
+    setScheduleVideosError("");
+    setSchedule((current) => ({ ...current, expectedChannelId: channel.id, videoId: "", time: "" }));
+    setScheduleTimeParts({ hour: "", minute: "" });
+    void fetch("/api/youtube/videos?privateOnly=1").then(async (response) => {
+      const data = await response.json() as ScheduleVideoOption[] | { error?: string };
+      if (!response.ok || !Array.isArray(data)) throw new Error((data as { error?: string }).error ?? "Unable to load private videos.");
+      if (live) setScheduleVideos(data);
+    }).catch((error: unknown) => {
+      if (live) setScheduleVideosError(error instanceof Error ? error.message : "Unable to load private videos.");
+    }).finally(() => { if (live) setScheduleVideosLoading(false); });
+    return () => { live = false; };
+  }, [channel]);
 
   function update(key: keyof UploadFields, value: string) {
     setFields((current) => ({ ...current, [key]: value }));
@@ -127,6 +207,63 @@ export function DashboardUploadForm() {
     } finally { inFlight.current = false; setBusy(false); }
   }
 
+  const [schedule, setSchedule] = useState<ScheduleFields>({ videoId: "", expectedChannelId: "", date: "", time: "", timezone: "" });
+  const [scheduleTimeParts, setScheduleTimeParts] = useState({ hour: "", minute: "" });
+  const [scheduleErrors, setScheduleErrors] = useState<Partial<Record<keyof ScheduleFields, string>>>({});
+  const [schedulePreview, setSchedulePreview] = useState<SchedulePreview | null>(null);
+  const [scheduleBusy, setScheduleBusy] = useState(false);
+  const [scheduleMessageText, setScheduleMessageText] = useState("");
+  const [scheduleVideos, setScheduleVideos] = useState<ScheduleVideoOption[]>([]);
+  const [scheduleVideosLoading, setScheduleVideosLoading] = useState(false);
+  const [scheduleVideosError, setScheduleVideosError] = useState("");
+  const scheduleInFlight = useRef(false);
+  const scheduleHours = Array.from({ length: 24 }, (_, hour) => String(hour).padStart(2, "0"));
+  const scheduleMinutes = Array.from({ length: 60 }, (_, minute) => String(minute).padStart(2, "0"));
+  const scheduleRefs = useRef<Partial<Record<keyof ScheduleFields, HTMLInputElement | HTMLSelectElement | null>>>({});
+
+  function changeSchedule(key: keyof ScheduleFields, value: string) {
+    setSchedule((current) => ({ ...current, [key]: value }));
+    setSchedulePreview(null);
+    setScheduleMessageText("");
+    setScheduleErrors((current) => ({ ...current, [key]: undefined }));
+  }
+
+  function changeScheduleTimePart(part: "hour" | "minute", value: string) {
+    const next = { ...scheduleTimeParts, [part]: value };
+    setScheduleTimeParts(next);
+    changeSchedule("time", scheduleTimeValue(next.hour, next.minute));
+  }
+
+  async function submitSchedule(dryRun: boolean) {
+    if (scheduleInFlight.current || !channel) return;
+    const submitted = { ...schedule, expectedChannelId: channel.id };
+    const currentPreview = schedulePreview;
+    if (!dryRun && (!currentPreview || JSON.stringify(currentPreview.fields) !== JSON.stringify(submitted))) return;
+    const nextErrors = validateSchedule(submitted);
+    setScheduleErrors(nextErrors);
+    if (Object.keys(nextErrors).length) {
+      setScheduleMessageText("Correct the highlighted scheduling fields before continuing.");
+      const first = (["videoId", "date", "time", "timezone"] as const).find((key) => nextErrors[key]);
+      if (first) scheduleRefs.current[first]?.focus();
+      return;
+    }
+    scheduleInFlight.current = true;
+    setScheduleBusy(true);
+    setScheduleMessageText(dryRun ? "Validating schedule…" : "Scheduling video…");
+    if (dryRun) setSchedulePreview(null);
+    try {
+      const response = await fetch("/api/youtube/schedule", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(schedulePayload(submitted, dryRun, currentPreview?.confirmationToken)) });
+      const reply = await response.json() as ScheduleReply;
+      setScheduleMessageText(scheduleMessage(reply, dryRun));
+      if (response.ok && dryRun && reply.status === "validated" && reply.channelId === channel.id && reply.videoId === submitted.videoId.trim() && reply.confirmationToken && reply.publishAtUtc && reply.operationId) {
+        setSchedulePreview({ fields: submitted, publishAtUtc: reply.publishAtUtc, confirmationToken: reply.confirmationToken, operationId: reply.operationId });
+      } else setSchedulePreview(null);
+    } catch {
+      setSchedulePreview(null);
+      setScheduleMessageText(`Scheduling request outcome is uncertain.${!dryRun && currentPreview ? ` Preview operation ID: ${currentPreview.operationId}.` : ""} Check YouTube before trying again; do not retry automatically.`);
+    } finally { scheduleInFlight.current = false; setScheduleBusy(false); }
+  }
+
   const inputClass = "w-full min-w-0 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
   return (
     <section className="space-y-5">
@@ -147,6 +284,46 @@ export function DashboardUploadForm() {
         </div>
       </form>
       <p role="status" aria-live="polite" className="text-sm text-zinc-300">{message}</p>
+      <section aria-labelledby="schedule-heading" className="space-y-4 border-t border-zinc-700 pt-6">
+        <div><h2 id="schedule-heading" className="text-xl font-bold">Schedule an existing private video</h2><p className="text-sm text-zinc-400">Select an existing private video from the active channel. Preview does not change the video.</p></div>
+        <form noValidate className="space-y-4" onSubmit={(event) => { event.preventDefault(); void submitSchedule(true); }}>
+          {(["videoId", "date", "time", "timezone"] as const).map((key) => (
+            <div key={key} className="space-y-1">
+              <label htmlFor={key === "time" ? "schedule-time-hour" : `schedule-${key}`} className="block text-sm font-medium">{{ videoId: "Existing private video ID", date: "Publish date", time: "Publish time (local)", timezone: "IANA timezone" }[key]}</label>
+              {key === "time" ? <div className="flex gap-2">
+                <select id="schedule-time-hour" name="schedule-time-hour" aria-label="Publish hour" value={scheduleTimeParts.hour} onChange={(event) => changeScheduleTimePart("hour", event.target.value)} disabled={scheduleBusy} aria-invalid={!!scheduleErrors[key]} aria-describedby={scheduleErrors[key] ? "schedule-error-time" : undefined} className={inputClass} ref={(node) => { scheduleRefs.current[key] = node; }}>
+                  <option value="" disabled>Hour</option>
+                  {scheduleHours.map((hour) => <option key={hour} value={hour}>{hour}</option>)}
+                </select>
+                <span aria-hidden="true" className="self-center">:</span>
+                <select id="schedule-time-minute" name="schedule-time-minute" aria-label="Publish minute" value={scheduleTimeParts.minute} onChange={(event) => changeScheduleTimePart("minute", event.target.value)} disabled={scheduleBusy} aria-invalid={!!scheduleErrors[key]} aria-describedby={scheduleErrors[key] ? "schedule-error-time" : undefined} className={inputClass}>
+                  <option value="" disabled>Minute</option>
+                  {scheduleMinutes.map((minute) => <option key={minute} value={minute}>{minute}</option>)}
+                </select>
+              </div> : key === "videoId" ? <select id="schedule-videoId" name="schedule-videoId" autoComplete="off" ref={(node) => { scheduleRefs.current[key] = node; }} value={schedule.videoId} onChange={(event) => changeSchedule(key, event.target.value)} disabled={scheduleBusy || scheduleVideosLoading || !scheduleVideos.length} aria-busy={scheduleVideosLoading} aria-invalid={!!scheduleErrors[key]} aria-describedby={scheduleErrors[key] ? "schedule-error-videoId" : undefined} className={inputClass}>
+                <option value="" disabled>{scheduleVideosLoading ? "Loading private videos…" : scheduleVideos.length ? "Select a private video" : "No private videos found — confirm a private upload first"}</option>
+                {scheduleVideos.map((video) => <option key={video.videoId} value={video.videoId}>{video.title || "Untitled video"} — {video.videoId}</option>)}
+              </select> : key === "timezone" ? <select id={`schedule-${key}`} name="schedule-timezone" autoComplete="off" ref={(node) => { scheduleRefs.current[key] = node; }} value={schedule[key]} onChange={(event) => changeSchedule(key, event.target.value)} disabled={scheduleBusy} aria-invalid={!!scheduleErrors[key]} aria-describedby={scheduleErrors[key] ? `schedule-error-${key}` : undefined} className={inputClass}>
+                <option value="" disabled>Select a timezone</option>
+                {scheduleTimezoneOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select> : <input id={`schedule-${key}`} name={`schedule-${key}`} autoComplete="off" type={scheduleInputType(key)} ref={(node) => { scheduleRefs.current[key] = node; }} value={schedule[key]} onChange={(event) => changeSchedule(key, event.target.value)} disabled={scheduleBusy} aria-invalid={!!scheduleErrors[key]} aria-describedby={scheduleErrors[key] ? `schedule-error-${key}` : undefined} className={inputClass} />}
+              {key === "videoId" && scheduleVideosError && <p role="alert" className="text-sm text-red-300">{scheduleVideosError}</p>}
+              {key === "videoId" && !scheduleVideosLoading && !scheduleVideosError && !scheduleVideos.length && <p className="text-sm text-zinc-400">No private videos are available for this active channel yet. Confirm a private upload first.</p>}
+              {scheduleErrors[key] && <p id={`schedule-error-${key}`} className="text-sm text-red-300">{scheduleErrors[key]}</p>}
+            </div>
+          ))}
+          <button type="submit" disabled={scheduleBusy || !channel} className="rounded-lg border border-zinc-600 px-4 py-2 font-medium disabled:opacity-50">Preview schedule (dry run)</button>
+          {schedulePreview && <div className="space-y-2 rounded-lg border border-zinc-600 p-4" aria-label="Schedule preview">
+            <p>Target channel: {channel?.title} ({schedulePreview.fields.expectedChannelId})</p>
+            <p>Existing video ID: {schedulePreview.fields.videoId}</p>
+            <p>Local publish time: {schedulePreview.fields.date}T{schedulePreview.fields.time}:00 ({schedulePreview.fields.timezone})</p>
+            <p>UTC publish time: <time dateTime={schedulePreview.publishAtUtc}>{schedulePreview.publishAtUtc}</time></p>
+            <p>Preview operation ID: {schedulePreview.operationId}</p>
+            <button type="button" disabled={scheduleBusy || !channel || channel.id !== schedulePreview.fields.expectedChannelId || JSON.stringify(schedulePreview.fields) !== JSON.stringify(schedule)} onClick={() => void submitSchedule(false)} className="rounded-lg bg-white px-4 py-2 font-medium text-zinc-950 disabled:opacity-50">Confirm schedule</button>
+          </div>}
+        </form>
+        <p role="status" aria-live="polite" className="text-sm text-zinc-300">{scheduleMessageText}</p>
+      </section>
     </section>
   );
 }
