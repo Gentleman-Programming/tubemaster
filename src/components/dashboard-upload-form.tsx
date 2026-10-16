@@ -250,10 +250,10 @@ export function DashboardUploadForm() {
           {(["videoId", "date", "time", "timezone"] as const).map((key) => (
             <div key={key} className="space-y-1">
               <label htmlFor={`schedule-${key}`} className="block text-sm font-medium">{{ videoId: "Existing private video ID", date: "Publish date", time: "Publish time (local)", timezone: "IANA timezone" }[key]}</label>
-              {key === "timezone" ? <select id={`schedule-${key}`} ref={(node) => { scheduleRefs.current[key] = node; }} value={schedule[key]} onChange={(event) => changeSchedule(key, event.target.value)} disabled={scheduleBusy} aria-invalid={!!scheduleErrors[key]} aria-describedby={scheduleErrors[key] ? `schedule-error-${key}` : undefined} className={inputClass}>
+              {key === "timezone" ? <select id={`schedule-${key}`} name="schedule-timezone" autoComplete="off" ref={(node) => { scheduleRefs.current[key] = node; }} value={schedule[key]} onChange={(event) => changeSchedule(key, event.target.value)} disabled={scheduleBusy} aria-invalid={!!scheduleErrors[key]} aria-describedby={scheduleErrors[key] ? `schedule-error-${key}` : undefined} className={inputClass}>
                 <option value="" disabled>Select a timezone</option>
                 {scheduleTimezoneOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-              </select> : <input id={`schedule-${key}`} type={key === "date" ? "date" : "time"} ref={(node) => { scheduleRefs.current[key] = node; }} value={schedule[key]} onChange={(event) => changeSchedule(key, event.target.value)} disabled={scheduleBusy} aria-invalid={!!scheduleErrors[key]} aria-describedby={scheduleErrors[key] ? `schedule-error-${key}` : undefined} className={inputClass} />}
+              </select> : <input id={`schedule-${key}`} name={`schedule-${key}`} autoComplete="off" inputMode={key === "videoId" ? "text" : undefined} spellCheck={key === "videoId" ? false : undefined} type={key === "date" ? "date" : "time"} ref={(node) => { scheduleRefs.current[key] = node; }} value={schedule[key]} onChange={(event) => changeSchedule(key, event.target.value)} disabled={scheduleBusy} aria-invalid={!!scheduleErrors[key]} aria-describedby={scheduleErrors[key] ? `schedule-error-${key}` : undefined} className={inputClass} />}
               {scheduleErrors[key] && <p id={`schedule-error-${key}`} className="text-sm text-red-300">{scheduleErrors[key]}</p>}
             </div>
           ))}

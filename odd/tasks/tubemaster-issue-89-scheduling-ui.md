@@ -26,6 +26,8 @@ L2: Issue #89 was approved for implementation and is stacked on PR #88's schedul
 L3: Implemented Specs 1–5 in the separate dashboard scheduling form and focused helper tests; focused test, TypeScript and scoped lint passed.
 L4: User correction: "ha de ser desplegable" — timezone selection must be a dropdown, not free text.
 L5: Replaced the free-text timezone field with a curated IANA timezone dropdown and added regression coverage.
+L6: User reported: "Existing private video ID ha puesto una hora" — prevent browser autofill from copying schedule values into the video ID field.
+L7: Added explicit names, autocomplete-off, and text input hints to isolate video ID/date/time controls.
 
 ## Follow-up commit
 
