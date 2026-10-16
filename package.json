@@ -24,7 +24,7 @@
     "next-auth": "^4.24.13",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "tsx": "^4.21.0",
+    "tsx": "^4.23.15",
     "zod": "^4.3.6"
   },
   "devDependencies": {
