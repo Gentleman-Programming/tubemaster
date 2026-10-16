@@ -130,7 +130,8 @@ export function DashboardUploadForm() {
     let live = true;
     setScheduleVideosLoading(true);
     setScheduleVideosError("");
-    setSchedule((current) => ({ ...current, expectedChannelId: channel.id, videoId: "" }));
+    setSchedule((current) => ({ ...current, expectedChannelId: channel.id, videoId: "", time: "" }));
+    setScheduleTimeParts({ hour: "", minute: "" });
     void fetch("/api/youtube/videos?privateOnly=1").then(async (response) => {
       const data = await response.json() as ScheduleVideoOption[] | { error?: string };
       if (!response.ok || !Array.isArray(data)) throw new Error((data as { error?: string }).error ?? "Unable to load private videos.");
@@ -207,6 +208,7 @@ export function DashboardUploadForm() {
   }
 
   const [schedule, setSchedule] = useState<ScheduleFields>({ videoId: "", expectedChannelId: "", date: "", time: "", timezone: "" });
+  const [scheduleTimeParts, setScheduleTimeParts] = useState({ hour: "", minute: "" });
   const [scheduleErrors, setScheduleErrors] = useState<Partial<Record<keyof ScheduleFields, string>>>({});
   const [schedulePreview, setSchedulePreview] = useState<SchedulePreview | null>(null);
   const [scheduleBusy, setScheduleBusy] = useState(false);
@@ -227,8 +229,9 @@ export function DashboardUploadForm() {
   }
 
   function changeScheduleTimePart(part: "hour" | "minute", value: string) {
-    const [hour = "", minute = ""] = schedule.time.split(":");
-    changeSchedule("time", scheduleTimeValue(part === "hour" ? value : hour, part === "minute" ? value : minute));
+    const next = { ...scheduleTimeParts, [part]: value };
+    setScheduleTimeParts(next);
+    changeSchedule("time", scheduleTimeValue(next.hour, next.minute));
   }
 
   async function submitSchedule(dryRun: boolean) {
@@ -288,12 +291,12 @@ export function DashboardUploadForm() {
             <div key={key} className="space-y-1">
               <label htmlFor={key === "time" ? "schedule-time-hour" : `schedule-${key}`} className="block text-sm font-medium">{{ videoId: "Existing private video ID", date: "Publish date", time: "Publish time (local)", timezone: "IANA timezone" }[key]}</label>
               {key === "time" ? <div className="flex gap-2">
-                <select id="schedule-time-hour" name="schedule-time-hour" aria-label="Publish hour" value={schedule.time.split(":")[0] ?? ""} onChange={(event) => changeScheduleTimePart("hour", event.target.value)} disabled={scheduleBusy} aria-invalid={!!scheduleErrors[key]} aria-describedby={scheduleErrors[key] ? "schedule-error-time" : undefined} className={inputClass} ref={(node) => { scheduleRefs.current[key] = node; }}>
+                <select id="schedule-time-hour" name="schedule-time-hour" aria-label="Publish hour" value={scheduleTimeParts.hour} onChange={(event) => changeScheduleTimePart("hour", event.target.value)} disabled={scheduleBusy} aria-invalid={!!scheduleErrors[key]} aria-describedby={scheduleErrors[key] ? "schedule-error-time" : undefined} className={inputClass} ref={(node) => { scheduleRefs.current[key] = node; }}>
                   <option value="" disabled>Hour</option>
                   {scheduleHours.map((hour) => <option key={hour} value={hour}>{hour}</option>)}
                 </select>
                 <span aria-hidden="true" className="self-center">:</span>
-                <select id="schedule-time-minute" name="schedule-time-minute" aria-label="Publish minute" value={schedule.time.split(":")[1] ?? ""} onChange={(event) => changeScheduleTimePart("minute", event.target.value)} disabled={scheduleBusy} aria-invalid={!!scheduleErrors[key]} aria-describedby={scheduleErrors[key] ? "schedule-error-time" : undefined} className={inputClass}>
+                <select id="schedule-time-minute" name="schedule-time-minute" aria-label="Publish minute" value={scheduleTimeParts.minute} onChange={(event) => changeScheduleTimePart("minute", event.target.value)} disabled={scheduleBusy} aria-invalid={!!scheduleErrors[key]} aria-describedby={scheduleErrors[key] ? "schedule-error-time" : undefined} className={inputClass}>
                   <option value="" disabled>Minute</option>
                   {scheduleMinutes.map((minute) => <option key={minute} value={minute}>{minute}</option>)}
                 </select>

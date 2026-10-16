@@ -48,11 +48,13 @@ Timezone dropdown correction: `7bf2e6f` (`fix(dashboard): use timezone dropdown`
 - TypeScript: `tsc --noEmit --incremental false` passed.
 - Scoped ESLint: passed.
 - `git diff --check`: passed.
-- Manual browser dry-run: pending on the local dashboard.
+- Manual browser dry-run: authenticated Chrome verified the private video selector, hour/minute persistence, UTC preview, and safe no-change response; no real confirmation was submitted.
 - Timezone dropdown correction: focused UI tests 8/8, TypeScript, scoped ESLint, and `git diff --check` passed.
 - Private-video selector: route/component tests 10/10, TypeScript, scoped ESLint, and `git diff --check` passed.
 - Explicit time selectors: route/component tests 11/11, TypeScript, scoped ESLint, and `git diff --check` passed.
+- Partial-time regression: Chrome reproduced hour reset because only the combined `time` value was controlled; separate `scheduleTimeParts` state now preserves hour/minute independently until both form `HH:MM`.
+- Final validation: serial full suite 301/301 and UI suite 10/10 passed after the partial-time fix.
 
 ## Commit
 
-Work-unit commit: `14c8bb4` (`feat(dashboard): add scheduling confirmation UX`).
+Work-unit commit: pending (`fix(dashboard): preserve partial schedule time selections`).
