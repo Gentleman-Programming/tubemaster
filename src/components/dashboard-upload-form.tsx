@@ -28,6 +28,25 @@ export function uploadMessage(reply: UploadReply, dryRun: boolean): string {
 }
 
 export type ScheduleFields = { videoId: string; expectedChannelId: string; date: string; time: string; timezone: string };
+export const scheduleTimezoneOptions = [
+  { value: "UTC", label: "UTC" },
+  { value: "America/Los_Angeles", label: "Pacific Time (US)" },
+  { value: "America/Denver", label: "Mountain Time (US)" },
+  { value: "America/Chicago", label: "Central Time (US)" },
+  { value: "America/New_York", label: "Eastern Time (US)" },
+  { value: "America/Mexico_City", label: "Mexico City" },
+  { value: "America/Sao_Paulo", label: "São Paulo" },
+  { value: "Europe/London", label: "London" },
+  { value: "Europe/Madrid", label: "Madrid" },
+  { value: "Europe/Paris", label: "Paris" },
+  { value: "Europe/Berlin", label: "Berlin" },
+  { value: "Africa/Johannesburg", label: "Johannesburg" },
+  { value: "Asia/Dubai", label: "Dubai" },
+  { value: "Asia/Kolkata", label: "Kolkata" },
+  { value: "Asia/Shanghai", label: "Shanghai" },
+  { value: "Asia/Tokyo", label: "Tokyo" },
+  { value: "Australia/Sydney", label: "Sydney" },
+] as const;
 type ScheduleReply = { status?: string; error?: string; outcome?: string; operationId?: string; publishAtUtc?: string; confirmationToken?: string; channelId?: string; videoId?: string };
 type SchedulePreview = { fields: ScheduleFields; publishAtUtc: string; confirmationToken: string; operationId: string };
 
@@ -166,7 +185,7 @@ export function DashboardUploadForm() {
   const [scheduleBusy, setScheduleBusy] = useState(false);
   const [scheduleMessageText, setScheduleMessageText] = useState("");
   const scheduleInFlight = useRef(false);
-  const scheduleRefs = useRef<Partial<Record<keyof ScheduleFields, HTMLInputElement | null>>>({});
+  const scheduleRefs = useRef<Partial<Record<keyof ScheduleFields, HTMLInputElement | HTMLSelectElement | null>>>({});
 
   function changeSchedule(key: keyof ScheduleFields, value: string) {
     setSchedule((current) => ({ ...current, [key]: value }));
@@ -231,7 +250,10 @@ export function DashboardUploadForm() {
           {(["videoId", "date", "time", "timezone"] as const).map((key) => (
             <div key={key} className="space-y-1">
               <label htmlFor={`schedule-${key}`} className="block text-sm font-medium">{{ videoId: "Existing private video ID", date: "Publish date", time: "Publish time (local)", timezone: "IANA timezone" }[key]}</label>
-              <input id={`schedule-${key}`} type={key === "date" ? "date" : key === "time" ? "time" : "text"} placeholder={key === "timezone" ? "America/New_York" : undefined} ref={(node) => { scheduleRefs.current[key] = node; }} value={schedule[key]} onChange={(event) => changeSchedule(key, event.target.value)} disabled={scheduleBusy} aria-invalid={!!scheduleErrors[key]} aria-describedby={scheduleErrors[key] ? `schedule-error-${key}` : undefined} className={inputClass} />
+              {key === "timezone" ? <select id={`schedule-${key}`} ref={(node) => { scheduleRefs.current[key] = node; }} value={schedule[key]} onChange={(event) => changeSchedule(key, event.target.value)} disabled={scheduleBusy} aria-invalid={!!scheduleErrors[key]} aria-describedby={scheduleErrors[key] ? `schedule-error-${key}` : undefined} className={inputClass}>
+                <option value="" disabled>Select a timezone</option>
+                {scheduleTimezoneOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select> : <input id={`schedule-${key}`} type={key === "date" ? "date" : "time"} ref={(node) => { scheduleRefs.current[key] = node; }} value={schedule[key]} onChange={(event) => changeSchedule(key, event.target.value)} disabled={scheduleBusy} aria-invalid={!!scheduleErrors[key]} aria-describedby={scheduleErrors[key] ? `schedule-error-${key}` : undefined} className={inputClass} />}
               {scheduleErrors[key] && <p id={`schedule-error-${key}`} className="text-sm text-red-300">{scheduleErrors[key]}</p>}
             </div>
           ))}

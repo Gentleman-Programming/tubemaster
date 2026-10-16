@@ -7,7 +7,7 @@
 
 ## Specs
 
-1. Add dashboard controls for scheduling an existing private video with date, time, and IANA timezone.
+1. Add dashboard controls for scheduling an existing private video with date, time, and IANA timezone dropdown.
 2. Show the UTC conversion and target channel/video in a preview before mutation.
 3. Require explicit confirmation and send the scheduling preview token, exact video/channel/timezone/time, and `confirmed: true`.
 4. Render safe validated, scheduled, authentication, validation, provider, and uncertain outcomes; preserve `operationId` for reconciliation.
@@ -24,6 +24,8 @@
 L1: User confirmed the backend scheduling slice was tested and asked to continue with the dashboard experience.
 L2: Issue #89 was approved for implementation and is stacked on PR #88's scheduling backend.
 L3: Implemented Specs 1–5 in the separate dashboard scheduling form and focused helper tests; focused test, TypeScript and scoped lint passed.
+L4: User correction: "ha de ser desplegable" — timezone selection must be a dropdown, not free text.
+L5: Replaced the free-text timezone field with a curated IANA timezone dropdown and added regression coverage.
 
 ## Validation
 
@@ -35,6 +37,7 @@ L3: Implemented Specs 1–5 in the separate dashboard scheduling form and focuse
 - Scoped ESLint: passed.
 - `git diff --check`: passed.
 - Manual browser dry-run: pending on the local dashboard.
+- Timezone dropdown correction: focused UI tests 8/8, TypeScript, scoped ESLint, and `git diff --check` passed.
 
 ## Commit
 

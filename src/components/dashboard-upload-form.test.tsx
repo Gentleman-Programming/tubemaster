@@ -1,10 +1,17 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { scheduleMessage, schedulePayload, stagingFailureMessage, uploadMessage, uploadPayload, validateSchedule, validateUpload } from "./dashboard-upload-form";
+import { scheduleMessage, schedulePayload, scheduleTimezoneOptions, stagingFailureMessage, uploadMessage, uploadPayload, validateSchedule, validateUpload } from "./dashboard-upload-form";
 
 const fields = { stagingFile: "clip.mp4", title: "  Short  ", description: "About", expectedChannelId: "UC123" };
 
 const schedule = { videoId: "video-1", expectedChannelId: "UC123", date: "2030-05-12", time: "09:30", timezone: "America/New_York" };
+
+test("timezone choices are exposed for the scheduling dropdown", () => {
+  assert.ok(scheduleTimezoneOptions.some((option) => option.value === "UTC"));
+  assert.ok(scheduleTimezoneOptions.some((option) => option.value === "America/New_York"));
+  assert.ok(scheduleTimezoneOptions.some((option) => option.value === "Europe/Madrid"));
+  assert.ok(scheduleTimezoneOptions.every((option) => option.label && option.value));
+});
 
 test("scheduling validates date, time, channel, video and IANA timezone", () => {
   assert.deepEqual(validateSchedule(schedule), {});
