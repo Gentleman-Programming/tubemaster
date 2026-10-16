@@ -28,6 +28,7 @@ L4: User correction: "ha de ser desplegable" — timezone selection must be a dr
 L5: Replaced the free-text timezone field with a curated IANA timezone dropdown and added regression coverage.
 L6: User reported: "Existing private video ID ha puesto una hora" — prevent browser autofill from copying schedule values into the video ID field.
 L7: Added explicit names, autocomplete-off, and text input hints to isolate video ID/date/time controls.
+L8: Follow-up screenshot showed the video ID still rendered as a time input; correct the input-type mapping so only `time` uses `type="time"`.
 
 ## Follow-up commit
 
