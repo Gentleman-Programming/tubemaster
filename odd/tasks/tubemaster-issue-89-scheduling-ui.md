@@ -27,6 +27,10 @@ L3: Implemented Specs 1–5 in the separate dashboard scheduling form and focuse
 L4: User correction: "ha de ser desplegable" — timezone selection must be a dropdown, not free text.
 L5: Replaced the free-text timezone field with a curated IANA timezone dropdown and added regression coverage.
 
+## Follow-up commit
+
+Timezone dropdown correction: `7bf2e6f` (`fix(dashboard): use timezone dropdown`).
+
 ## Validation
 
 - Focused UI tests: 7/7 passed.
