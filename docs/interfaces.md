@@ -23,7 +23,9 @@ Service workflows emit `start` before work and one terminal `success`, `dry_run`
 
 The default metadata logger streams JSON lines to stderr. Playlist events are emitted only if a logger is injected into playlist services. These events are not stored in SQLite and have no app-managed retention or query API; retention is determined by the process supervisor or log collector. Audit delivery is best-effort, not durable, and does not alter responses or block writes.
 
-## Web UI (`http://localhost:3000`)
+## Web UI (`http://localhost:3102`)
+
+The local development server uses port `3102` by default. Set `NEXTAUTH_URL=http://localhost:3102` and register `http://localhost:3102/api/auth/callback/google` as the Google OAuth web callback.
 
 ### Login flow
 
