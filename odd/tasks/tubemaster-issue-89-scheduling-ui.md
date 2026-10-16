@@ -32,6 +32,8 @@ L8: Follow-up screenshot showed the video ID still rendered as a time input; cor
 L9: User selected "Selector desplegable de videos" — load private videos for the active channel and remove manual ID entry.
 L10: Added `privateOnly=1` filtering to the existing video list route and replaced manual video ID entry with an accessible select.
 L11: User confirmed the channel has no private video yet; clarified the empty state to instruct confirming a private upload first.
+L12: Manual screenshot showed the native segmented time control retaining an invalid partial value; replace it with explicit hour/minute selectors.
+L13: Replaced the native segmented time input with separate accessible hour/minute dropdowns and kept `publishAt` normalized as `HH:MM`.
 
 ## Follow-up commit
 
@@ -49,6 +51,7 @@ Timezone dropdown correction: `7bf2e6f` (`fix(dashboard): use timezone dropdown`
 - Manual browser dry-run: pending on the local dashboard.
 - Timezone dropdown correction: focused UI tests 8/8, TypeScript, scoped ESLint, and `git diff --check` passed.
 - Private-video selector: route/component tests 10/10, TypeScript, scoped ESLint, and `git diff --check` passed.
+- Explicit time selectors: route/component tests 11/11, TypeScript, scoped ESLint, and `git diff --check` passed.
 
 ## Commit
 

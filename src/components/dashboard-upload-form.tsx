@@ -34,6 +34,10 @@ export function scheduleInputType(key: keyof ScheduleFields): "text" | "date" | 
   return "text";
 }
 
+export function scheduleTimeValue(hour: string, minute: string): string {
+  return /^([01]\d|2[0-3])$/.test(hour) && /^[0-5]\d$/.test(minute) ? `${hour}:${minute}` : "";
+}
+
 export const scheduleTimezoneOptions = [
   { value: "UTC", label: "UTC" },
   { value: "America/Los_Angeles", label: "Pacific Time (US)" },
@@ -211,6 +215,8 @@ export function DashboardUploadForm() {
   const [scheduleVideosLoading, setScheduleVideosLoading] = useState(false);
   const [scheduleVideosError, setScheduleVideosError] = useState("");
   const scheduleInFlight = useRef(false);
+  const scheduleHours = Array.from({ length: 24 }, (_, hour) => String(hour).padStart(2, "0"));
+  const scheduleMinutes = Array.from({ length: 60 }, (_, minute) => String(minute).padStart(2, "0"));
   const scheduleRefs = useRef<Partial<Record<keyof ScheduleFields, HTMLInputElement | HTMLSelectElement | null>>>({});
 
   function changeSchedule(key: keyof ScheduleFields, value: string) {
@@ -218,6 +224,11 @@ export function DashboardUploadForm() {
     setSchedulePreview(null);
     setScheduleMessageText("");
     setScheduleErrors((current) => ({ ...current, [key]: undefined }));
+  }
+
+  function changeScheduleTimePart(part: "hour" | "minute", value: string) {
+    const [hour = "", minute = ""] = schedule.time.split(":");
+    changeSchedule("time", scheduleTimeValue(part === "hour" ? value : hour, part === "minute" ? value : minute));
   }
 
   async function submitSchedule(dryRun: boolean) {
@@ -275,8 +286,18 @@ export function DashboardUploadForm() {
         <form noValidate className="space-y-4" onSubmit={(event) => { event.preventDefault(); void submitSchedule(true); }}>
           {(["videoId", "date", "time", "timezone"] as const).map((key) => (
             <div key={key} className="space-y-1">
-              <label htmlFor={`schedule-${key}`} className="block text-sm font-medium">{{ videoId: "Existing private video ID", date: "Publish date", time: "Publish time (local)", timezone: "IANA timezone" }[key]}</label>
-              {key === "videoId" ? <select id="schedule-videoId" name="schedule-videoId" autoComplete="off" ref={(node) => { scheduleRefs.current[key] = node; }} value={schedule.videoId} onChange={(event) => changeSchedule(key, event.target.value)} disabled={scheduleBusy || scheduleVideosLoading || !scheduleVideos.length} aria-busy={scheduleVideosLoading} aria-invalid={!!scheduleErrors[key]} aria-describedby={scheduleErrors[key] ? "schedule-error-videoId" : undefined} className={inputClass}>
+              <label htmlFor={key === "time" ? "schedule-time-hour" : `schedule-${key}`} className="block text-sm font-medium">{{ videoId: "Existing private video ID", date: "Publish date", time: "Publish time (local)", timezone: "IANA timezone" }[key]}</label>
+              {key === "time" ? <div className="flex gap-2">
+                <select id="schedule-time-hour" name="schedule-time-hour" aria-label="Publish hour" value={schedule.time.split(":")[0] ?? ""} onChange={(event) => changeScheduleTimePart("hour", event.target.value)} disabled={scheduleBusy} aria-invalid={!!scheduleErrors[key]} aria-describedby={scheduleErrors[key] ? "schedule-error-time" : undefined} className={inputClass} ref={(node) => { scheduleRefs.current[key] = node; }}>
+                  <option value="" disabled>Hour</option>
+                  {scheduleHours.map((hour) => <option key={hour} value={hour}>{hour}</option>)}
+                </select>
+                <span aria-hidden="true" className="self-center">:</span>
+                <select id="schedule-time-minute" name="schedule-time-minute" aria-label="Publish minute" value={schedule.time.split(":")[1] ?? ""} onChange={(event) => changeScheduleTimePart("minute", event.target.value)} disabled={scheduleBusy} aria-invalid={!!scheduleErrors[key]} aria-describedby={scheduleErrors[key] ? "schedule-error-time" : undefined} className={inputClass}>
+                  <option value="" disabled>Minute</option>
+                  {scheduleMinutes.map((minute) => <option key={minute} value={minute}>{minute}</option>)}
+                </select>
+              </div> : key === "videoId" ? <select id="schedule-videoId" name="schedule-videoId" autoComplete="off" ref={(node) => { scheduleRefs.current[key] = node; }} value={schedule.videoId} onChange={(event) => changeSchedule(key, event.target.value)} disabled={scheduleBusy || scheduleVideosLoading || !scheduleVideos.length} aria-busy={scheduleVideosLoading} aria-invalid={!!scheduleErrors[key]} aria-describedby={scheduleErrors[key] ? "schedule-error-videoId" : undefined} className={inputClass}>
                 <option value="" disabled>{scheduleVideosLoading ? "Loading private videos…" : scheduleVideos.length ? "Select a private video" : "No private videos found — confirm a private upload first"}</option>
                 {scheduleVideos.map((video) => <option key={video.videoId} value={video.videoId}>{video.title || "Untitled video"} — {video.videoId}</option>)}
               </select> : key === "timezone" ? <select id={`schedule-${key}`} name="schedule-timezone" autoComplete="off" ref={(node) => { scheduleRefs.current[key] = node; }} value={schedule[key]} onChange={(event) => changeSchedule(key, event.target.value)} disabled={scheduleBusy} aria-invalid={!!scheduleErrors[key]} aria-describedby={scheduleErrors[key] ? `schedule-error-${key}` : undefined} className={inputClass}>

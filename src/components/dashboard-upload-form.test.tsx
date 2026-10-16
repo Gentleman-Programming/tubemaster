@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { scheduleInputType, scheduleMessage, schedulePayload, scheduleTimezoneOptions, stagingFailureMessage, uploadMessage, uploadPayload, validateSchedule, validateUpload } from "./dashboard-upload-form";
+import { scheduleInputType, scheduleMessage, schedulePayload, scheduleTimeValue, scheduleTimezoneOptions, stagingFailureMessage, uploadMessage, uploadPayload, validateSchedule, validateUpload } from "./dashboard-upload-form";
 
 const fields = { stagingFile: "clip.mp4", title: "  Short  ", description: "About", expectedChannelId: "UC123" };
 
@@ -10,6 +10,12 @@ test("schedule fields use the correct native input types", () => {
   assert.equal(scheduleInputType("videoId"), "text");
   assert.equal(scheduleInputType("date"), "date");
   assert.equal(scheduleInputType("time"), "time");
+});
+
+test("time selectors only produce a valid value after both parts are selected", () => {
+  assert.equal(scheduleTimeValue("19", "30"), "19:30");
+  assert.equal(scheduleTimeValue("19", ""), "");
+  assert.equal(scheduleTimeValue("", "30"), "");
 });
 
 test("timezone choices are exposed for the scheduling dropdown", () => {
