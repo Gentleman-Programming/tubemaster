@@ -31,6 +31,7 @@ L7: Added explicit names, autocomplete-off, and text input hints to isolate vide
 L8: Follow-up screenshot showed the video ID still rendered as a time input; correct the input-type mapping so only `time` uses `type="time"`.
 L9: User selected "Selector desplegable de videos" — load private videos for the active channel and remove manual ID entry.
 L10: Added `privateOnly=1` filtering to the existing video list route and replaced manual video ID entry with an accessible select.
+L11: User confirmed the channel has no private video yet; clarified the empty state to instruct confirming a private upload first.
 
 ## Follow-up commit
 

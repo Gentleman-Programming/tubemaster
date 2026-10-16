@@ -271,19 +271,20 @@ export function DashboardUploadForm() {
       </form>
       <p role="status" aria-live="polite" className="text-sm text-zinc-300">{message}</p>
       <section aria-labelledby="schedule-heading" className="space-y-4 border-t border-zinc-700 pt-6">
-        <div><h2 id="schedule-heading" className="text-xl font-bold">Schedule an existing private video</h2><p className="text-sm text-zinc-400">Enter the video ID of an existing private video on the active channel. Preview does not change the video.</p></div>
+        <div><h2 id="schedule-heading" className="text-xl font-bold">Schedule an existing private video</h2><p className="text-sm text-zinc-400">Select an existing private video from the active channel. Preview does not change the video.</p></div>
         <form noValidate className="space-y-4" onSubmit={(event) => { event.preventDefault(); void submitSchedule(true); }}>
           {(["videoId", "date", "time", "timezone"] as const).map((key) => (
             <div key={key} className="space-y-1">
               <label htmlFor={`schedule-${key}`} className="block text-sm font-medium">{{ videoId: "Existing private video ID", date: "Publish date", time: "Publish time (local)", timezone: "IANA timezone" }[key]}</label>
               {key === "videoId" ? <select id="schedule-videoId" name="schedule-videoId" autoComplete="off" ref={(node) => { scheduleRefs.current[key] = node; }} value={schedule.videoId} onChange={(event) => changeSchedule(key, event.target.value)} disabled={scheduleBusy || scheduleVideosLoading || !scheduleVideos.length} aria-busy={scheduleVideosLoading} aria-invalid={!!scheduleErrors[key]} aria-describedby={scheduleErrors[key] ? "schedule-error-videoId" : undefined} className={inputClass}>
-                <option value="" disabled>{scheduleVideosLoading ? "Loading private videos…" : scheduleVideos.length ? "Select a private video" : "No private videos found"}</option>
+                <option value="" disabled>{scheduleVideosLoading ? "Loading private videos…" : scheduleVideos.length ? "Select a private video" : "No private videos found — confirm a private upload first"}</option>
                 {scheduleVideos.map((video) => <option key={video.videoId} value={video.videoId}>{video.title || "Untitled video"} — {video.videoId}</option>)}
               </select> : key === "timezone" ? <select id={`schedule-${key}`} name="schedule-timezone" autoComplete="off" ref={(node) => { scheduleRefs.current[key] = node; }} value={schedule[key]} onChange={(event) => changeSchedule(key, event.target.value)} disabled={scheduleBusy} aria-invalid={!!scheduleErrors[key]} aria-describedby={scheduleErrors[key] ? `schedule-error-${key}` : undefined} className={inputClass}>
                 <option value="" disabled>Select a timezone</option>
                 {scheduleTimezoneOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               </select> : <input id={`schedule-${key}`} name={`schedule-${key}`} autoComplete="off" type={scheduleInputType(key)} ref={(node) => { scheduleRefs.current[key] = node; }} value={schedule[key]} onChange={(event) => changeSchedule(key, event.target.value)} disabled={scheduleBusy} aria-invalid={!!scheduleErrors[key]} aria-describedby={scheduleErrors[key] ? `schedule-error-${key}` : undefined} className={inputClass} />}
               {key === "videoId" && scheduleVideosError && <p role="alert" className="text-sm text-red-300">{scheduleVideosError}</p>}
+              {key === "videoId" && !scheduleVideosLoading && !scheduleVideosError && !scheduleVideos.length && <p className="text-sm text-zinc-400">No private videos are available for this active channel yet. Confirm a private upload first.</p>}
               {scheduleErrors[key] && <p id={`schedule-error-${key}`} className="text-sm text-red-300">{scheduleErrors[key]}</p>}
             </div>
           ))}
