@@ -1,0 +1,15 @@
+# TubeMaster issue #89 — task mirror
+
+Goal: expose guarded scheduling preview and confirmation in the authenticated dashboard.
+
+Specs: accessible date/time/timezone controls; UTC preview; explicit confirmation with exact preview token; safe success/provider/uncertain states; preserve upload behavior; no autonomous publishing or job runner.
+
+Tasks:
+1. [x] Add scheduling controls to dashboard.
+2. [x] Wire preview and confirmation states.
+3. [ ] Run UI and full validation, including manual browser dry-run.
+
+Validation: focused UI 7/7; serial full TypeScript tests 301/301; TypeScript; scoped ESLint; and diff check passed. Parallel combined runner exposed existing SQLite BUSY file-level failures; serial checks passed.
+Commit: `d7337fc` (`feat(dashboard): add scheduling confirmation UX`).
+
+Status: implemented; manual browser dry-run pending.
