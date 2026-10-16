@@ -57,4 +57,4 @@ Timezone dropdown correction: `7bf2e6f` (`fix(dashboard): use timezone dropdown`
 
 ## Commit
 
-Work-unit commit: pending (`fix(dashboard): preserve partial schedule time selections`).
+Work-unit commit: `dee2053` (`fix(dashboard): preserve partial schedule time selections`).
