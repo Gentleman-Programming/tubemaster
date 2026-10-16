@@ -16,7 +16,7 @@
     "mcp:video-metadata": "node --import tsx src/mcp/server.ts"
   },
   "dependencies": {
-    "@libsql/client": "^0.17.2",
+    "@libsql/client": "^0.18.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "drizzle-orm": "^0.45.2",
     "googleapis": "^171.4.0",
