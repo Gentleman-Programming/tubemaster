@@ -10,6 +10,6 @@ Tasks:
 3. [ ] Run UI and full validation, including manual browser dry-run.
 
 Validation: focused UI 7/7; serial full TypeScript tests 301/301; TypeScript; scoped ESLint; and diff check passed. Parallel combined runner exposed existing SQLite BUSY file-level failures; serial checks passed.
-Commit: `d7337fc` (`feat(dashboard): add scheduling confirmation UX`).
+Commit: `14c8bb4` (`feat(dashboard): add scheduling confirmation UX`).
 
 Status: implemented; manual browser dry-run pending.
