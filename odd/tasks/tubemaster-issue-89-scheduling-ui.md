@@ -7,7 +7,7 @@
 
 ## Specs
 
-1. Add dashboard controls for scheduling an existing private video with date, time, and IANA timezone dropdown.
+1. Add dashboard controls for selecting an existing private video from a dropdown, with date, time, and IANA timezone dropdown.
 2. Show the UTC conversion and target channel/video in a preview before mutation.
 3. Require explicit confirmation and send the scheduling preview token, exact video/channel/timezone/time, and `confirmed: true`.
 4. Render safe validated, scheduled, authentication, validation, provider, and uncertain outcomes; preserve `operationId` for reconciliation.
@@ -29,6 +29,8 @@ L5: Replaced the free-text timezone field with a curated IANA timezone dropdown 
 L6: User reported: "Existing private video ID ha puesto una hora" — prevent browser autofill from copying schedule values into the video ID field.
 L7: Added explicit names, autocomplete-off, and text input hints to isolate video ID/date/time controls.
 L8: Follow-up screenshot showed the video ID still rendered as a time input; correct the input-type mapping so only `time` uses `type="time"`.
+L9: User selected "Selector desplegable de videos" — load private videos for the active channel and remove manual ID entry.
+L10: Added `privateOnly=1` filtering to the existing video list route and replaced manual video ID entry with an accessible select.
 
 ## Follow-up commit
 
@@ -45,6 +47,7 @@ Timezone dropdown correction: `7bf2e6f` (`fix(dashboard): use timezone dropdown`
 - `git diff --check`: passed.
 - Manual browser dry-run: pending on the local dashboard.
 - Timezone dropdown correction: focused UI tests 8/8, TypeScript, scoped ESLint, and `git diff --check` passed.
+- Private-video selector: route/component tests 10/10, TypeScript, scoped ESLint, and `git diff --check` passed.
 
 ## Commit
 
