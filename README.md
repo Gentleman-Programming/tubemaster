@@ -22,13 +22,13 @@ TubeMaster is a **channel-operations workspace** spanning Web UI, CLI, MCP, and 
    - `npm run cli:video-metadata -- auth login`
    - `npm run cli:video-metadata -- auth whoami`
 
-Full walkthrough: **[docs/getting-started.md](docs/getting-started.md)**
+Full walkthrough: **[docs/getting-started.md](docs/getting-started.md)**. The development server uses port `3102` so the OAuth callback remains stable.
 
 ## Interfaces
 
 | Interface | Entry point | Current scope |
 | --- | --- | --- |
-| Web UI | `http://localhost:3000` | Browse/select/export videos, playlist actions, rules, estimated quota usage |
+| Web UI | `http://localhost:3102` | Browse/select/export videos, playlist actions, rules, estimated quota usage |
 | CLI | `npm run cli:video-metadata -- <command>` | Auth/channel context, metadata and transcript workflows, playlists; quota has a separate command |
 | MCP Server (stdio) | `npm run mcp:video-metadata` | Context, metadata, transcripts, playlists; no login or registered quota tool |
 | API Route Handlers | `/api/youtube/videos`, `/api/video-metadata/*` | Session-authenticated UI operations, metadata/transcripts, estimated quota usage |

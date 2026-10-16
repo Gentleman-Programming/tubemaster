@@ -17,11 +17,12 @@ Typical causes:
 Checks:
 
 1. Verify OAuth redirect URIs in Google Cloud:
-   - `http://localhost:3000/api/auth/callback/google`
+   - `http://localhost:3102/api/auth/callback/google`
    - `http://127.0.0.1:8787` (or your configured callback port)
 2. Retry CLI login:
    - `npm run cli:video-metadata -- auth login`
-3. If callback port is custom, set `CLI_OAUTH_CALLBACK_PORT` and update redirect URI.
+3. The Web UI always uses port `3102`; keep `NEXTAUTH_URL=http://localhost:3102` in `.env.local`.
+4. If the CLI callback port is custom, set `CLI_OAUTH_CALLBACK_PORT` and update its redirect URI.
 
 ### `AUTH_USER_NOT_FOUND`
 

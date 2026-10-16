@@ -56,7 +56,7 @@ Create **OAuth client ID** of type **Web application**.
 
 Add these redirect URIs:
 
-- `http://localhost:3000/api/auth/callback/google` (Web UI / NextAuth callback)
+- `http://localhost:3102/api/auth/callback/google` (Web UI / NextAuth callback)
 - `http://127.0.0.1:8787` (CLI loopback login callback)
 
 If you change `CLI_OAUTH_CALLBACK_PORT`, update the second URI to match the new port.
@@ -77,7 +77,7 @@ Create `.env.local` in project root:
 ```dotenv
 GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-client-secret
-NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_URL=http://localhost:3102
 NEXTAUTH_SECRET=replace-with-a-long-random-secret
 
 # Optional
@@ -101,7 +101,7 @@ npm ci
 npm run dev
 ```
 
-App should be available at `http://localhost:3000`.
+The development server always uses port `3102` so the OAuth callback remains stable. App URL: `http://localhost:3102`.
 
 ---
 
@@ -165,7 +165,7 @@ When `--dryRun` is present, TubeMaster returns the proposed metadata without cal
 
 ## Common setup pitfalls
 
-- **OAuth redirect mismatch** → verify both redirect URIs exactly.
+- **OAuth redirect mismatch** → verify the Web UI callback is exactly `http://localhost:3102/api/auth/callback/google`, the CLI callback is exactly `http://127.0.0.1:8787`, and `.env.local` uses `NEXTAUTH_URL=http://localhost:3102`.
 - **Scope-related errors** (`AUTH_SCOPE_INSUFFICIENT`) → for core workflows, check the default YouTube scopes (`youtube.readonly`, `youtube`, `youtube.force-ssl`) and re-authenticate. For the optional analytics summary API, the authenticated grant must also include `https://www.googleapis.com/auth/yt-analytics.readonly`; add it to the authorization request and re-authenticate existing users.
 - **No active auth context** (`AUTH_USER_NOT_FOUND`) → run `auth login` and retry.
 - **Write guardrail failures** (`WRITE_CHANNEL_*`) → set/select expected channel and ensure OAuth account matches it.
