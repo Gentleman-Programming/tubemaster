@@ -1,0 +1,16 @@
+# TubeMaster issue #87 — task mirror
+
+Goal: schedule an already-uploaded private video through a guarded, timezone-explicit operation.
+
+Specs: provider-neutral contract; expectedChannelId; explicit timezone and UTC conversion; dry-run/preview; confirmation; private-video/channel checks; opaque safe outcomes; no job runner or autonomous publish.
+
+Tasks:
+1. [x] Define scheduling contract and validation.
+2. [x] Implement guarded YouTube scheduling service.
+3. [x] Expose authenticated scheduling route and tests.
+4. [x] Run full validation and commit.
+
+Validation: focused scheduling tests 7/7; full TypeScript tests 301/301; TypeScript; scoped ESLint; and diff check all passed.
+Commit: `148d638` (`feat(youtube): schedule private uploads`).
+
+Status: complete.
