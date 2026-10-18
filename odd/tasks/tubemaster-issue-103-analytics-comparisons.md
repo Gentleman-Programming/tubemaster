@@ -16,7 +16,7 @@ Branch: `feat/analytics-period-comparisons`
 ## Tasks
 - T1 (S2-S6): Define and test equivalent-period and metric-delta contracts/services; commit: 2258fa5
 - T2 (S1-S4, S7): Integrate bounded comparison requests through the existing analytics API and dashboard UI; commit: 2f3d11f
-- T3 (S5, S7-S9): Update documentation, run focused/full validation, and publish the approved PR; commit: dc203e3
+- T3 (S5, S7-S9): Update documentation, run focused/full validation, and publish the approved PR; commit: 90066bd
 
 ## Log
 - L1: "1"
