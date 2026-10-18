@@ -14,7 +14,7 @@ Branch: `feat/analytics-period-comparisons`
 - S9: "Do not modify issue #3, which remains intentionally deferred."
 
 ## Tasks
-- T1 (S2-S6): Define and test equivalent-period and metric-delta contracts/services; commit: pending
+- T1 (S2-S6): Define and test equivalent-period and metric-delta contracts/services; commit: 2258fa5
 - T2 (S1-S4, S7): Integrate bounded comparison requests through the existing analytics API and dashboard UI; commit: pending
 - T3 (S5, S7-S9): Update documentation, run focused/full validation, and publish the approved PR; commit: pending
 
@@ -24,3 +24,4 @@ Branch: `feat/analytics-period-comparisons`
 - L3: Roadmap review confirmed Phase 2 Analytics as the next priority; issue #94/PR #95 already delivered period selection and reporting, so this slice adds period-over-period deltas without new OAuth scopes, persistence, or writes.
 - L4: Issue #103 was created and labeled `type:feature` and `status:approved` after duplicate search found no existing comparison issue.
 - L5: T1 RED was observed before implementation; the focused comparison suite now passes 4/4 with inclusive previous-period bounds, 90-day validation, totals, and zero-baseline percentage semantics.
+- L6: T2 focused dashboard/comparison tests pass 10/10 and `npx tsc --noEmit` passes after integrating two bounded read-only summary requests and comparison cards.

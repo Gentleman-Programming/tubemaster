@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   analyticsDateRangeForPreset,
+  formatAnalyticsDelta,
+  requestAnalyticsComparison,
   requestAnalyticsSummary,
   serializeAnalyticsCsv,
 } from "./analytics-dashboard";
@@ -36,6 +38,36 @@ test("requests the selected date range and returns the summary", async () => {
   });
   assert.equal(requestUrl, "/api/youtube/analytics?startDate=2025-05-17&endDate=2025-06-15");
   assert.deepEqual(result.days, []);
+});
+
+test("requests both current and immediately preceding periods", async () => {
+  const requestUrls: string[] = [];
+  const result = await requestAnalyticsComparison(
+    { startDate: "2025-06-09", endDate: "2025-06-15" },
+    { startDate: "2025-06-02", endDate: "2025-06-08" },
+    async (url) => {
+      requestUrls.push(url);
+      return Response.json({
+        kind: "analytics-summary",
+        startDate: url.includes("06-09") ? "2025-06-09" : "2025-06-02",
+        endDate: url.includes("06-15") ? "2025-06-15" : "2025-06-08",
+        days: [],
+      });
+    },
+  );
+  assert.deepEqual(requestUrls.sort(), [
+    "/api/youtube/analytics?startDate=2025-06-02&endDate=2025-06-08",
+    "/api/youtube/analytics?startDate=2025-06-09&endDate=2025-06-15",
+  ]);
+  assert.equal(result.current.startDate, "2025-06-09");
+  assert.equal(result.previous.endDate, "2025-06-08");
+});
+
+test("formats deltas without implying growth from a zero baseline", () => {
+  assert.equal(formatAnalyticsDelta({ absolute: 10, percentage: 25 }), "+25.0% (+10)");
+  assert.equal(formatAnalyticsDelta({ absolute: -10, percentage: -25 }), "-25.0% (-10)");
+  assert.equal(formatAnalyticsDelta({ absolute: 10, percentage: null }), "New (+10)");
+  assert.equal(formatAnalyticsDelta({ absolute: 0, percentage: 0 }), "0.0% (0)");
 });
 
 test("surfaces API error messages for failed summaries", async () => {
