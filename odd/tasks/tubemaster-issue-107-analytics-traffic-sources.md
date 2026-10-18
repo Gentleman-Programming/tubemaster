@@ -17,10 +17,11 @@ Issue: https://github.com/Gentleman-Programming/tubemaster/issues/107
 
 - T1 (S2-S3, provider contracts and mapping) — add traffic-source types, adapter query, validation, and tests. Commit: `07987ac`.
 - T2 (S3-S5, route and dashboard) — expose data, comparisons, rendering, and CSV behavior. Commit: `07987ac`.
-- T3 (S6-S8, verification and delivery) — run checks, update docs, and publish issue-linked PR. Commit: pending.
+- T3 (S6-S8, verification and delivery) — run checks, update docs, and publish issue-linked PR. Commit: `b881b45`; PR: #108.
 
 ## Log
 
 - L1: "Para el primer slice de Analytics ampliado, ¿qué métrica priorizamos? La base actual solo consulta series diarias read-only de 90 días." — selected "Fuentes de tráfico".
 - L2: "Add read-only YouTube Analytics traffic-source breakdowns to the existing Analytics dashboard and period-comparison flow."
 - L3: T1 and T2 implemented in `07987ac`; focused tests (20/20), full suite, TypeScript, lint, build, and diff check pass. Build retains two pre-existing Turbopack filesystem-tracing warnings in `src/lib/video-upload/staging.ts`.
+- L4: T3 published in `b881b45`; issue-linked PR #108 is open with `type:feature`.
