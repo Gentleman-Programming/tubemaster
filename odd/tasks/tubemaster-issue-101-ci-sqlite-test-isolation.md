@@ -11,7 +11,7 @@ Issue: https://github.com/Gentleman-Programming/tubemaster/issues/101
 - T1 (S1-S2): Reproduce the failing test-runner behavior and isolate the process concurrency cause; commit: 85f0dbc
 - T2 (S1-S3): Implement a deterministic sequential test runner without changing runtime database behavior; commit: 85f0dbc
 - T3 (S2-S3): Run full validation and the GitHub CI workflow; commit: 85f0dbc
-- T4 (S1-S3): Publish the approved CI fix PR linked to issue #101; commit: 85f0dbc
+- T4 (S1-S3): Publish the approved CI fix PR linked to issue #101; commit: 0c148609
 
 ## Log
 - L1: "mira los ci en gh que no pasan"
@@ -19,4 +19,5 @@ Issue: https://github.com/Gentleman-Programming/tubemaster/issues/101
 - L3: Issue #101 was created and labeled `status:approved` and `type:bug`.
 - L4: The current `npm run test -- --test-concurrency=1` reproduces the race locally; running the same test files as separate sequential Node processes passes.
 - L5: The sequential runner completed 303 tests with 303 passes; lint, TypeScript, production build, and `git diff --check` passed. Build emitted existing Turbopack filesystem-tracing warnings unrelated to this change.
-- L6: Commit `85f0dbc` contains the deterministic runner, package script change, and ODD evidence.
+- L6: Commit `0c148609` contains the deterministic runner, package script change, and ODD evidence.
+- L7: PR #102 passed GitHub Actions Validate and is open for human review.
