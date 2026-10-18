@@ -161,7 +161,25 @@ Check required env vars exist in `.env.local`:
 - `NEXTAUTH_URL`
 - `NEXTAUTH_SECRET`
 
+Next.js reads `.env.local` from the **current project/worktree root**. Git worktrees do not share ignored environment files, so a worktree can start normally while OAuth fails with `client_id is required`. Before testing a worktree, verify the file exists there and contains the required keys:
+
+```bash
+test -f .env.local
+awk -F= '/^[A-Za-z_][A-Za-z0-9_]*=/{print $1}' .env.local | sort
+```
+
+If the file is missing, copy it from your local private environment source into that worktree's root; never commit `.env.local` or print its values.
+
 ### Wrong callback host/port
+
+The development server uses port `3102`, not the default Next.js port `3000`:
+
+```bash
+npm run dev
+# open http://localhost:3102
+```
+
+A browser error at `http://localhost:3000` with `ERR_CONNECTION_REFUSED` means it is pointed at the wrong port or no server is running there. This is separate from an OAuth credential error.
 
 - Web callback uses `NEXTAUTH_URL` + `/api/auth/callback/google`
 - CLI callback uses `http://127.0.0.1:<CLI_OAUTH_CALLBACK_PORT|8787>`
