@@ -1,0 +1,5 @@
+# Issue #92 CI task mirror
+
+- T1 — Add least-privilege GitHub Actions validation workflow (S1-S5).
+- T2 — Document local and CI validation commands and safety boundaries (S1-S5).
+- T3 — Validate, inspect, and commit the work unit (S1-S5).

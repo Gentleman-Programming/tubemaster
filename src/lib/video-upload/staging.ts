@@ -76,8 +76,15 @@ export async function stageVideo(request: Request, rootPath: string, maxBytes: n
     }
     if (!size) throw new StageError("validation_failed");
     buffer = buffer.slice(marker.length);
-    while (buffer.length < 2) await pull();
-    if (buffer.length !== 2 || buffer[0] !== 13 || buffer[1] !== 10) throw new StageError("validation_failed");
+    while (buffer.length < 2) {
+      const trailing = await iterator.read();
+      if (trailing.done) break;
+      const next = new Uint8Array(buffer.length + trailing.value.length);
+      next.set(buffer); next.set(trailing.value, buffer.length); buffer = next;
+      if (buffer.length > 2) throw new StageError("validation_failed");
+    }
+    if (buffer.length === 2 && (buffer[0] !== 13 || buffer[1] !== 10)) throw new StageError("validation_failed");
+    if (buffer.length !== 0 && buffer.length !== 2) throw new StageError("validation_failed");
     const remaining = await iterator.read();
     if (!remaining.done) throw new StageError("validation_failed");
     await handle.close(); handle = undefined;

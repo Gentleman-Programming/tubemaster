@@ -24,12 +24,17 @@ Create `.env.local` before using YouTube-backed flows:
 
 ## Validation
 
-Run the lightweight checks before opening a PR:
+Run the local checks before opening a PR:
 
 ```bash
+npm ci
 npm run test
 npm run lint
+npx tsc --noEmit
+npm run build
 ```
+
+GitHub Actions repeats these checks for pull requests and pushes targeting `feature-2` using Node.js 22.14.0. Its test step adds `--test-concurrency=1` because the SQLite-backed suite can contend when test files run in parallel. The workflow uses read-only repository permissions, does not require application credentials, and cancels superseded runs for the same ref. A failed step blocks the workflow and should be fixed before merging.
 
 During installation, npm may warn that `node-domexception` is deprecated. It arrives transitively through `@libsql/client`; the warning is upstream-owned, and this project intentionally does not suppress or override it.
 
