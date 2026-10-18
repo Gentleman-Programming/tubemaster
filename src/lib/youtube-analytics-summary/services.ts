@@ -40,8 +40,8 @@ const invalid = (start: string, end: string, now: () => Date) => {
     e = parse(end);
   if (!s || !e) return "Invalid date";
   if (s > e) return "startDate must be <= endDate";
-  if ((e.getTime() - s.getTime()) / 86400000 + 1 > 31)
-    return "Range exceeds 31 days";
+  if ((e.getTime() - s.getTime()) / 86400000 + 1 > 90)
+    return "Range exceeds 90 days";
   const today = new Date(now().getTime());
   today.setUTCHours(0, 0, 0, 0);
   if (s > today || e > today) return "Future date";
