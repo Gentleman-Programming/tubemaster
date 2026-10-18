@@ -11,7 +11,7 @@ TubeMaster is a channel-operations workspace across Web UI, CLI, MCP, and API su
 | Playlists | Web UI actions; CLI and MCP list/create/update/delete/add/remove; selected UI API routes |
 | Rules | Web UI create/list/delete/run; `/api/rules` and `/api/run` |
 | Metadata preview/apply, transcript acquisition | CLI, MCP, and metadata API; apply requires expected channel and supports dry run |
-| Analytics summary | Authenticated `GET /api/youtube/analytics` with required date range; selected-video JSON/CSV export is local to the Web UI |
+| Analytics summary | Authenticated `GET /api/youtube/analytics` with a range of up to 90 days; the dashboard offers 7/30/90-day presets, custom dates, daily totals, and local CSV export |
 | Quota visibility | Web UI, separate quota CLI, and quota API; MCP quota handler is not registered |
 | Operation audit events | Best-effort metadata, transcript, and playlist service logs; not a queryable audit store |
 
@@ -44,6 +44,9 @@ The local development server uses port `3102` by default. Set `NEXTAUTH_URL=http
   - Create rule (field + match type + target playlist).
   - List/delete rules.
   - Run matching engine (`/api/run`) over recent videos.
+- **Analytics**
+  - View daily views, likes, comments, and estimated minutes watched for the last 7, 30, or 90 days, or a custom range up to 90 days.
+  - Export the displayed daily analytics rows as a local CSV file; no additional write or mutation is performed.
 - **Quota usage** (`/dashboard/quota`)
   - View estimated usage grouped by bucket date, operation, and channel.
   - Unassigned usage is shown as `Unassigned`; estimates are observational and not authoritative Google quota usage.

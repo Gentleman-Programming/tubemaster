@@ -1,0 +1,5 @@
+# Analytics dashboard and reporting task mirror
+
+- T1 — Add authenticated period controls and daily analytics presentation (S1-S3) — commit `d35dd16`.
+- T2 — Add read-only CSV export for displayed analytics rows (S1-S3) — commit `d35dd16`.
+- T3 — Validate behavior, accessibility states, API boundaries, and production checks (S1-S3) — commit `d35dd16`.

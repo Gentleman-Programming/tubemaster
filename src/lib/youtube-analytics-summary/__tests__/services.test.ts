@@ -53,13 +53,21 @@ test("validates date bounds and avoids downstream calls", async () => {
     { ...args, startDate: "bad" },
     { ...args, startDate: "2025-02-30" },
     { ...args, startDate: "2025-02-01", endDate: "2025-01-01" },
-    { ...args, startDate: "2025-01-01", endDate: "2025-02-01" },
+    { ...args, startDate: "2025-01-01", endDate: "2025-04-01" },
     { ...args, startDate: "2025-06-16", endDate: "2025-06-20" },
   ])
     assert.equal(await code(deps, input), "INVALID_INPUT");
   assert.equal(
     await code({}, { ...args, endDate: "2025-01-31" }),
     "analytics-summary",
+  );
+  assert.equal(
+    await code({}, { ...args, endDate: "2025-03-31" }),
+    "analytics-summary",
+  );
+  assert.equal(
+    await code({}, { ...args, endDate: "2025-04-01" }),
+    "INVALID_INPUT",
   );
   assert.equal(calls, 0);
 });

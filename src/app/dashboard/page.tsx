@@ -8,6 +8,7 @@ import { RuleList } from "@/components/rule-list";
 import { RunButton } from "@/components/run-button";
 import { ManualMode } from "@/components/manual-mode";
 import { TranscriptDashboard } from "@/components/transcript-dashboard";
+import { AnalyticsDashboard } from "@/components/analytics-dashboard";
 type Rule = {
   id: number;
   name: string;
@@ -58,6 +59,7 @@ export default function Dashboard() {
   return (
     <main className="space-y-6">
       <h1 className="text-2xl font-bold">Dashboard</h1>
+      <AnalyticsDashboard />
       <TranscriptDashboard />
 
       <div className="mb-6 flex gap-1 rounded-lg bg-zinc-900 p-1">

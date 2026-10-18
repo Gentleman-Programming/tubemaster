@@ -6,6 +6,7 @@ import type { AnalyticsSummaryDependencies } from "./contracts";
 import { createYoutubeAnalyticsSummaryService } from "./services";
 export type {
   AnalyticsSummaryInput,
+  AnalyticsDayRow,
   AnalyticsSummaryResult,
   AnalyticsSummaryError,
   AnalyticsSummaryResponse,
