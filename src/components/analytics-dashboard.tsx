@@ -1,7 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { AnalyticsDayRow, AnalyticsSummaryError, AnalyticsSummaryResult } from "@/lib/youtube-analytics-summary";
+import type {
+  AnalyticsDayRow,
+  AnalyticsSummaryError,
+  AnalyticsSummaryResult,
+  AnalyticsTrafficSourceRow,
+} from "@/lib/youtube-analytics-summary";
 import {
   calculateMetricDelta,
   calculatePeriodComparison,
@@ -19,6 +24,7 @@ type AnalyticsComparisonResult = {
 };
 
 const csvHeader = "date,views,likes,comments,estimatedMinutesWatched";
+const trafficSourceCsvHeader = "trafficSource,views,likes,comments,estimatedMinutesWatched";
 
 function formatDate(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -71,15 +77,26 @@ export function formatAnalyticsDelta(delta: AnalyticsMetricDelta): string {
   return `${percentage}% (${absolute})`;
 }
 
-export function serializeAnalyticsCsv(days: readonly AnalyticsDayRow[]): string {
-  const rows = days.map(({ date, views, likes, comments, estimatedMinutesWatched }) =>
-    [date, views, likes, comments, estimatedMinutesWatched].join(","),
-  );
-  return [csvHeader, ...rows].join("\r\n");
+function csvCell(value: string | number): string {
+  const text = String(value);
+  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
 
-function downloadCsv(days: readonly AnalyticsDayRow[]) {
-  const url = URL.createObjectURL(new Blob([serializeAnalyticsCsv(days)], { type: "text/csv;charset=utf-8" }));
+export function serializeAnalyticsCsv(
+  days: readonly AnalyticsDayRow[],
+  trafficSources: readonly AnalyticsTrafficSourceRow[] = [],
+): string {
+  const rows = days.map(({ date, views, likes, comments, estimatedMinutesWatched }) =>
+    [date, views, likes, comments, estimatedMinutesWatched].map(csvCell).join(","),
+  );
+  const sourceRows = trafficSources.map(({ sourceType, views, likes, comments, estimatedMinutesWatched }) =>
+    [sourceType, views, likes, comments, estimatedMinutesWatched].map(csvCell).join(","),
+  );
+  return [csvHeader, ...rows, ...(sourceRows.length ? ["", trafficSourceCsvHeader, ...sourceRows] : [])].join("\r\n");
+}
+
+function downloadCsv(days: readonly AnalyticsDayRow[], trafficSources: readonly AnalyticsTrafficSourceRow[]) {
+  const url = URL.createObjectURL(new Blob([serializeAnalyticsCsv(days, trafficSources)], { type: "text/csv;charset=utf-8" }));
   const link = document.createElement("a");
   link.href = url;
   link.download = "tubemaster-analytics.csv";
@@ -148,6 +165,15 @@ export function AnalyticsDashboard() {
     ["Comments", totals.comments.toLocaleString(), deltas.comments],
     ["Minutes watched", totals.estimatedMinutesWatched.toLocaleString(undefined, { maximumFractionDigits: 1 }), deltas.estimatedMinutesWatched],
   ] : [];
+  const trafficSources = comparison
+    ? (() => {
+        const previous = new Map(comparison.previous.trafficSources.map((row) => [row.sourceType, row]));
+        return comparison.current.trafficSources.map((row) => ({
+          ...row,
+          delta: calculateMetricDelta(row.views, previous.get(row.sourceType)?.views ?? 0),
+        }));
+      })()
+    : [];
 
   return (
     <section aria-labelledby="analytics-heading" className="space-y-5 rounded-xl border border-zinc-800 bg-zinc-950/40 p-5">
@@ -221,7 +247,7 @@ export function AnalyticsDashboard() {
 
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-lg font-semibold">Daily detail</h3>
-            <button type="button" disabled={!comparison.current.days.length} onClick={() => downloadCsv(comparison.current.days)} className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-200 hover:border-zinc-500 disabled:cursor-not-allowed disabled:opacity-50">
+            <button type="button" disabled={!comparison.current.days.length && !comparison.current.trafficSources.length} onClick={() => downloadCsv(comparison.current.days, comparison.current.trafficSources)} className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-200 hover:border-zinc-500 disabled:cursor-not-allowed disabled:opacity-50">
               Export CSV
             </button>
           </div>
@@ -238,6 +264,23 @@ export function AnalyticsDashboard() {
               </table>
             </div>
           ) : <p className="text-sm text-zinc-400">No analytics data for this period.</p>}
+
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold">Traffic sources</h3>
+            {trafficSources.length ? (
+              <div className="overflow-x-auto rounded-lg border border-zinc-800">
+                <table className="min-w-full text-left text-sm">
+                  <caption className="sr-only">Traffic sources for the selected period</caption>
+                  <thead className="bg-zinc-900 text-xs uppercase text-zinc-500">
+                    <tr>{["Source", "Views", "Likes", "Comments", "Minutes watched", "vs previous"].map((heading) => <th key={heading} scope="col" className="px-4 py-3">{heading}</th>)}</tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-800">
+                    {trafficSources.map((source) => <tr key={source.sourceType} className="text-zinc-300"><th scope="row" className="px-4 py-3 font-medium text-white">{source.sourceType}</th><td className="px-4 py-3">{source.views.toLocaleString()}</td><td className="px-4 py-3">{source.likes.toLocaleString()}</td><td className="px-4 py-3">{source.comments.toLocaleString()}</td><td className="px-4 py-3">{source.estimatedMinutesWatched.toLocaleString(undefined, { maximumFractionDigits: 1 })}</td><td className="px-4 py-3">{formatAnalyticsDelta(source.delta)}</td></tr>)}
+                  </tbody>
+                </table>
+              </div>
+            ) : <p className="text-sm text-zinc-400">No traffic-source data for this period.</p>}
+          </div>
         </>
       )}
     </section>

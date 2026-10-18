@@ -34,6 +34,7 @@ test("requests the selected date range and returns the summary", async () => {
       startDate: "2025-05-17",
       endDate: "2025-06-15",
       days: [],
+      trafficSources: [],
     });
   });
   assert.equal(requestUrl, "/api/youtube/analytics?startDate=2025-05-17&endDate=2025-06-15");
@@ -52,6 +53,7 @@ test("requests both current and immediately preceding periods", async () => {
         startDate: url.includes("06-09") ? "2025-06-09" : "2025-06-02",
         endDate: url.includes("06-15") ? "2025-06-15" : "2025-06-08",
         days: [],
+        trafficSources: [],
       });
     },
   );
@@ -91,5 +93,18 @@ test("serializes daily metrics as a spreadsheet-safe CSV", () => {
       },
     ]),
     "date,views,likes,comments,estimatedMinutesWatched\r\n2025-06-15,1000,25,4,123.5",
+  );
+});
+
+test("appends traffic-source metrics to the local CSV export", () => {
+  assert.equal(
+    serializeAnalyticsCsv([], [{
+      sourceType: "EXTERNAL,REFERRAL",
+      views: 12,
+      likes: 3,
+      comments: 1,
+      estimatedMinutesWatched: 7.5,
+    }]),
+    "date,views,likes,comments,estimatedMinutesWatched\r\n\r\ntrafficSource,views,likes,comments,estimatedMinutesWatched\r\n\"EXTERNAL,REFERRAL\",12,3,1,7.5",
   );
 });
