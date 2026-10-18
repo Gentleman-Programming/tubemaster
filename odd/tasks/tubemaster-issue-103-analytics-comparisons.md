@@ -16,7 +16,7 @@ Branch: `feat/analytics-period-comparisons`
 ## Tasks
 - T1 (S2-S6): Define and test equivalent-period and metric-delta contracts/services; commit: 2258fa5
 - T2 (S1-S4, S7): Integrate bounded comparison requests through the existing analytics API and dashboard UI; commit: 2f3d11f
-- T3 (S5, S7-S9): Update documentation, run focused/full validation, and publish the approved PR; commit: pending
+- T3 (S5, S7-S9): Update documentation, run focused/full validation, and publish the approved PR; commit: dc203e3
 
 ## Log
 - L1: "1"
@@ -26,3 +26,4 @@ Branch: `feat/analytics-period-comparisons`
 - L5: T1 RED was observed before implementation; the focused comparison suite now passes 4/4 with inclusive previous-period bounds, 90-day validation, totals, and zero-baseline percentage semantics.
 - L6: T2 focused dashboard/comparison tests pass 10/10 and `npx tsc --noEmit` passes after integrating two bounded read-only summary requests and comparison cards.
 - L7: Full local validation passed: sequential tests, ESLint, TypeScript, production build, and `git diff --check`. Build retained the existing Turbopack filesystem-tracing warnings in `src/lib/video-upload/staging.ts`.
+- L8: PR #104 GitHub Actions Validate passed; the PR remains open for human merge decision.
