@@ -11,7 +11,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --import tsx --test \"src/**/*.test.ts\"",
+    "test": "node scripts/run-tests-serially.mjs",
     "cli:video-metadata": "node --import tsx src/cli/video-metadata.ts",
     "mcp:video-metadata": "node --import tsx src/mcp/server.ts"
   },

@@ -1,0 +1,6 @@
+# Issue #101 task mirror
+
+- T1 [done] (S1-S2): Reproduce the failing test-runner behavior and isolate the process concurrency cause; commit: 85f0dbc
+- T2 [done] (S1-S3): Implement a deterministic sequential test runner without changing runtime database behavior; commit: 85f0dbc
+- T3 [done] (S2-S3): Run full validation and the GitHub CI workflow; commit: 85f0dbc
+- T4 [done] (S1-S3): Publish the approved CI fix PR linked to issue #101; commit: 0c148609
