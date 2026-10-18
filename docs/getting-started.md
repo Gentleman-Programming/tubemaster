@@ -22,7 +22,7 @@ See [interface details](./interfaces.md) for exact commands and boundaries. Audi
 
 ## 1) Google Cloud Console setup
 
-TubeMaster uses Google OAuth + YouTube Data API v3. You must configure both.
+TubeMaster uses Google OAuth, YouTube Data API v3, and YouTube Analytics API v2. Enable both Google APIs and configure the OAuth consent screen before starting the app.
 
 ### 1.1 Create or select a Google Cloud project
 
@@ -30,10 +30,14 @@ TubeMaster uses Google OAuth + YouTube Data API v3. You must configure both.
 2. Create a new project (or use an existing one for TubeMaster).
 3. Keep this project selected for the next steps.
 
-### 1.2 Enable YouTube Data API v3
+### 1.2 Enable Google APIs
 
 1. Go to **APIs & Services → Library**.
-2. Enable **YouTube Data API v3**.
+2. Search for and enable **YouTube Data API v3**.
+3. Search for and enable **YouTube Analytics API** (`youtubeanalytics.googleapis.com`).
+4. Confirm both APIs are enabled in the same Google Cloud project used by the OAuth client.
+
+> The dashboard's analytics requests return `403 accessNotConfigured` when YouTube Analytics API is disabled. After enabling it, Google may need a few minutes to propagate the change before the first request succeeds.
 
 ### 1.3 Configure OAuth consent screen
 
@@ -47,8 +51,9 @@ TubeMaster uses Google OAuth + YouTube Data API v3. You must configure both.
    - `https://www.googleapis.com/auth/youtube.readonly`
    - `https://www.googleapis.com/auth/youtube`
    - `https://www.googleapis.com/auth/youtube.force-ssl`
+   - `https://www.googleapis.com/auth/yt-analytics.readonly`
 
-> These are the default core scopes requested by the app (`src/lib/auth.ts`). The optional analytics summary API additionally requires `https://www.googleapis.com/auth/yt-analytics.readonly` in the authenticated user's OAuth grant; the default login scopes do not request it. To use analytics, add this scope to the consent configuration and OAuth authorization request, then authenticate again. Existing users must re-authenticate after adding the scope; updating the consent screen alone does not upgrade their grants. Core setup does not require analytics access.
+> These are the default scopes requested by the app (`src/lib/auth.ts`). Existing users must re-authenticate after this scope is added; updating the consent screen alone does not upgrade their grants.
 
 ### 1.4 Create OAuth client credentials
 

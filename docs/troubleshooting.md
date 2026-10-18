@@ -44,6 +44,17 @@ Fix:
 1. Re-authenticate with consent prompt (CLI login does this by default).
 2. Ensure OAuth consent flow can issue offline access.
 
+### YouTube Analytics API disabled (`403 accessNotConfigured` / `SERVICE_DISABLED`)
+
+Meaning: the OAuth grant is valid, but the Google Cloud project has not enabled `youtubeanalytics.googleapis.com`.
+
+Fix:
+
+1. Open **Google Cloud Console → APIs & Services → Library** for the project used by `GOOGLE_CLIENT_ID`.
+2. Enable **YouTube Analytics API**.
+3. Wait a few minutes for Google to propagate the change.
+4. Reload `http://localhost:3102/dashboard` and retry the selected period. No code or OAuth-secret change is required.
+
 ### `AUTH_SCOPE_INSUFFICIENT`
 
 Meaning: token exists but lacks required scope(s).
@@ -54,6 +65,7 @@ Fix:
    - `https://www.googleapis.com/auth/youtube.readonly`
    - `https://www.googleapis.com/auth/youtube`
    - `https://www.googleapis.com/auth/youtube.force-ssl`
+   - `https://www.googleapis.com/auth/yt-analytics.readonly`
 2. Revoke prior authorization (Google Account → Security → Third-party access) or run local logout, then log in again to grant the new scope set.
 
 ### Transcript unavailable: `permissions-insufficient`
