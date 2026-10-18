@@ -47,7 +47,8 @@ The local development server uses port `3102` by default. Set `NEXTAUTH_URL=http
   - Run matching engine (`/api/run`) over recent videos.
 - **Analytics**
   - View daily views, likes, comments, and estimated minutes watched for the last 7, 30, or 90 days, or a custom range up to 90 days.
-  - Export the displayed daily analytics rows as a local CSV file; no additional write or mutation is performed.
+  - Compare current totals with the immediately preceding equivalent period, including absolute and percentage deltas; a zero baseline is shown as `New` rather than an invented percentage.
+  - Export the displayed daily analytics rows as a local CSV file; comparison loading is read-only and performs no persistence or analytics write.
 - **Quota usage** (`/dashboard/quota`)
   - View estimated usage grouped by bucket date, operation, and channel.
   - Unassigned usage is shown as `Unassigned`; estimates are observational and not authoritative Google quota usage.
@@ -140,7 +141,8 @@ All routes are App Router handlers and require authenticated session user.
 ### Analytics summary API
 
 - `GET /api/youtube/analytics?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD`
-  - Requires an authenticated session, a valid date range, and an OAuth grant containing `https://www.googleapis.com/auth/yt-analytics.readonly`. This optional analytics scope is not requested by the default core login scopes; without it the route returns `AUTH_SCOPE_INSUFFICIENT` (403). Add the scope to the authorization request and re-authenticate existing users to grant it. This is distinct from the Web UI's local selected-video export and does not imply expanded reporting is available.
+  - Requires an authenticated session, a valid date range, and an OAuth grant containing `https://www.googleapis.com/auth/yt-analytics.readonly`. This optional analytics scope is not requested by the default core login scopes; without it the route returns `AUTH_SCOPE_INSUFFICIENT` (403). Add the scope to the authorization request and re-authenticate existing users to grant it. This is distinct from the Web UI's local selected-video export and does not imply analytics writes.
+  - The dashboard comparison uses this same endpoint twice: once for the selected range and once for the immediately preceding equivalent range. Each request remains bounded by the existing 90-day limit; no comparison data is persisted.
 
 ### Quota usage API
 

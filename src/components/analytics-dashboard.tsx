@@ -2,10 +2,21 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AnalyticsDayRow, AnalyticsSummaryError, AnalyticsSummaryResult } from "@/lib/youtube-analytics-summary";
+import {
+  calculateMetricDelta,
+  calculatePeriodComparison,
+  sumAnalyticsDays,
+  type AnalyticsDateRange,
+  type AnalyticsMetricDelta,
+} from "@/lib/youtube-analytics-summary/comparison";
 
 type Preset = "7" | "30" | "90" | "custom";
-type DateRange = { startDate: string; endDate: string };
+type DateRange = AnalyticsDateRange;
 type AnalyticsFetcher = (url: string) => Promise<Response>;
+type AnalyticsComparisonResult = {
+  current: AnalyticsSummaryResult;
+  previous: AnalyticsSummaryResult;
+};
 
 const csvHeader = "date,views,likes,comments,estimatedMinutesWatched";
 
@@ -41,6 +52,25 @@ export async function requestAnalyticsSummary(
   return body as AnalyticsSummaryResult;
 }
 
+export async function requestAnalyticsComparison(
+  currentRange: DateRange,
+  previousRange: DateRange,
+  fetcher: AnalyticsFetcher = (url) => fetch(url),
+): Promise<AnalyticsComparisonResult> {
+  const [current, previous] = await Promise.all([
+    requestAnalyticsSummary(currentRange.startDate, currentRange.endDate, fetcher),
+    requestAnalyticsSummary(previousRange.startDate, previousRange.endDate, fetcher),
+  ]);
+  return { current, previous };
+}
+
+export function formatAnalyticsDelta(delta: AnalyticsMetricDelta): string {
+  const absolute = delta.absolute > 0 ? `+${delta.absolute}` : `${delta.absolute}`;
+  if (delta.percentage === null) return `New (${absolute})`;
+  const percentage = delta.percentage > 0 ? `+${delta.percentage.toFixed(1)}` : delta.percentage.toFixed(1);
+  return `${percentage}% (${absolute})`;
+}
+
 export function serializeAnalyticsCsv(days: readonly AnalyticsDayRow[]): string {
   const rows = days.map(({ date, views, likes, comments, estimatedMinutesWatched }) =>
     [date, views, likes, comments, estimatedMinutesWatched].join(","),
@@ -62,7 +92,7 @@ export function AnalyticsDashboard() {
   const [preset, setPreset] = useState<Preset>("7");
   const [startDate, setStartDate] = useState(initialRange.startDate);
   const [endDate, setEndDate] = useState(initialRange.endDate);
-  const [summary, setSummary] = useState<AnalyticsSummaryResult | null>(null);
+  const [comparison, setComparison] = useState<AnalyticsComparisonResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -70,9 +100,10 @@ export function AnalyticsDashboard() {
     setLoading(true);
     setErrorMessage(null);
     try {
-      setSummary(await requestAnalyticsSummary(range.startDate, range.endDate));
+      const periods = calculatePeriodComparison(range.startDate, range.endDate);
+      setComparison(await requestAnalyticsComparison(periods.current, periods.previous));
     } catch (error) {
-      setSummary(null);
+      setComparison(null);
       setErrorMessage(error instanceof Error ? error.message : "Unable to load analytics");
     } finally {
       setLoading(false);
@@ -91,15 +122,32 @@ export function AnalyticsDashboard() {
     void load(range);
   };
 
-  const totals = useMemo(() => (summary?.days ?? []).reduce(
-    (result, day) => ({
-      views: result.views + day.views,
-      likes: result.likes + day.likes,
-      comments: result.comments + day.comments,
-      estimatedMinutesWatched: result.estimatedMinutesWatched + day.estimatedMinutesWatched,
-    }),
-    { views: 0, likes: 0, comments: 0, estimatedMinutesWatched: 0 },
-  ), [summary]);
+  const totals = useMemo(
+    () => (comparison ? sumAnalyticsDays(comparison.current.days) : null),
+    [comparison],
+  );
+  const previousTotals = useMemo(
+    () => (comparison ? sumAnalyticsDays(comparison.previous.days) : null),
+    [comparison],
+  );
+  const deltas = useMemo(
+    () => (totals && previousTotals ? {
+      views: calculateMetricDelta(totals.views, previousTotals.views),
+      likes: calculateMetricDelta(totals.likes, previousTotals.likes),
+      comments: calculateMetricDelta(totals.comments, previousTotals.comments),
+      estimatedMinutesWatched: calculateMetricDelta(
+        totals.estimatedMinutesWatched,
+        previousTotals.estimatedMinutesWatched,
+      ),
+    } : null),
+    [previousTotals, totals],
+  );
+  const metricCards: readonly [string, string, AnalyticsMetricDelta][] = totals && deltas ? [
+    ["Views", totals.views.toLocaleString(), deltas.views],
+    ["Likes", totals.likes.toLocaleString(), deltas.likes],
+    ["Comments", totals.comments.toLocaleString(), deltas.comments],
+    ["Minutes watched", totals.estimatedMinutesWatched.toLocaleString(undefined, { maximumFractionDigits: 1 }), deltas.estimatedMinutesWatched],
+  ] : [];
 
   return (
     <section aria-labelledby="analytics-heading" className="space-y-5 rounded-xl border border-zinc-800 bg-zinc-950/40 p-5">
@@ -156,37 +204,36 @@ export function AnalyticsDashboard() {
       {loading && <p role="status" className="text-sm text-zinc-400">Loading analytics...</p>}
       {errorMessage && <p role="alert" className="text-sm text-red-300">{errorMessage}</p>}
 
-      {summary && !loading && (
+      {comparison && totals && previousTotals && deltas && !loading && (
         <>
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 text-sm text-zinc-300">
+            Comparing {comparison.current.startDate}–{comparison.current.endDate} with {comparison.previous.startDate}–{comparison.previous.endDate}
+          </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              ["Views", totals.views.toLocaleString()],
-              ["Likes", totals.likes.toLocaleString()],
-              ["Comments", totals.comments.toLocaleString()],
-              ["Minutes watched", totals.estimatedMinutesWatched.toLocaleString(undefined, { maximumFractionDigits: 1 })],
-            ].map(([label, value]) => (
+            {metricCards.map(([label, value, delta]) => (
               <div key={label} className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
                 <p className="text-xs uppercase tracking-wide text-zinc-500">{label}</p>
                 <p className="mt-1 text-2xl font-semibold text-white">{value}</p>
+                <p className="mt-1 text-xs text-zinc-400">vs previous: {formatAnalyticsDelta(delta)}</p>
               </div>
             ))}
           </div>
 
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-lg font-semibold">Daily detail</h3>
-            <button type="button" disabled={!summary.days.length} onClick={() => downloadCsv(summary.days)} className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-200 hover:border-zinc-500 disabled:cursor-not-allowed disabled:opacity-50">
+            <button type="button" disabled={!comparison.current.days.length} onClick={() => downloadCsv(comparison.current.days)} className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-200 hover:border-zinc-500 disabled:cursor-not-allowed disabled:opacity-50">
               Export CSV
             </button>
           </div>
-          {summary.days.length ? (
+          {comparison.current.days.length ? (
             <div className="overflow-x-auto rounded-lg border border-zinc-800">
               <table className="min-w-full text-left text-sm">
-                <caption className="sr-only">Daily analytics from {summary.startDate} to {summary.endDate}</caption>
+                <caption className="sr-only">Daily analytics from {comparison.current.startDate} to {comparison.current.endDate}</caption>
                 <thead className="bg-zinc-900 text-xs uppercase text-zinc-500">
                   <tr>{["Date", "Views", "Likes", "Comments", "Minutes watched"].map((heading) => <th key={heading} scope="col" className="px-4 py-3">{heading}</th>)}</tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-800">
-                  {summary.days.map((day) => <tr key={day.date} className="text-zinc-300"><th scope="row" className="whitespace-nowrap px-4 py-3 font-medium text-white">{day.date}</th><td className="px-4 py-3">{day.views.toLocaleString()}</td><td className="px-4 py-3">{day.likes.toLocaleString()}</td><td className="px-4 py-3">{day.comments.toLocaleString()}</td><td className="px-4 py-3">{day.estimatedMinutesWatched.toLocaleString(undefined, { maximumFractionDigits: 1 })}</td></tr>)}
+                  {comparison.current.days.map((day) => <tr key={day.date} className="text-zinc-300"><th scope="row" className="whitespace-nowrap px-4 py-3 font-medium text-white">{day.date}</th><td className="px-4 py-3">{day.views.toLocaleString()}</td><td className="px-4 py-3">{day.likes.toLocaleString()}</td><td className="px-4 py-3">{day.comments.toLocaleString()}</td><td className="px-4 py-3">{day.estimatedMinutesWatched.toLocaleString(undefined, { maximumFractionDigits: 1 })}</td></tr>)}
                 </tbody>
               </table>
             </div>
