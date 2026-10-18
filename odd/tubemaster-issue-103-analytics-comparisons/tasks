@@ -1,5 +1,5 @@
 # Issue #103 task mirror
 
 - T1 [done] (S2-S6): Define and test equivalent-period and metric-delta contracts/services; commit: 2258fa5
-- T2 [done] (S1-S4, S7): Integrate bounded comparison requests through the existing analytics API and dashboard UI; commit: pending
+- T2 [done] (S1-S4, S7): Integrate bounded comparison requests through the existing analytics API and dashboard UI; commit: 2f3d11f
 - T3 [in_progress] (S5, S7-S9): Update documentation, run focused/full validation, and publish the approved PR; commit: pending
