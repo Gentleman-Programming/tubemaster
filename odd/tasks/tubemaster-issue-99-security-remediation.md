@@ -11,10 +11,10 @@ Issue: https://github.com/Gentleman-Programming/tubemaster/issues/99
 - S6: "Any vulnerability without an applicable safe upgrade is documented with its reachability and mitigation."
 
 ## Tasks
-- T1 (S2-S6): Triage direct, transitive, runtime, and development advisories; commit: pending
-- T2 (S2-S6): Apply compatible patched dependency upgrades and lockfile changes; commit: pending
-- T3 (S3-S6): Run audit, tests, lint, typecheck, build, and compatibility checks; commit: pending
-- T4 (S2-S6): Publish the approved security remediation PR linked to issue #99; commit: pending
+- T1 (S2-S6): Triage direct, transitive, runtime, and development advisories; commit: `07af5ff`
+- T2 (S2-S6): Apply compatible patched dependency upgrades and lockfile changes; commit: `07af5ff`
+- T3 (S3-S6): Run audit, tests, lint, typecheck, build, and compatibility checks; commit: `07af5ff`
+- T4 (S2-S6): Publish the approved security remediation PR linked to issue #99; commit: pending; publication not authorized
 
 ## Log
 - L1: "pues vamos a trabajarlas"
