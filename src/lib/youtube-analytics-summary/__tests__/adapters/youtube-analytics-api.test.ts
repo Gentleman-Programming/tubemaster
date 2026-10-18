@@ -107,7 +107,7 @@ test("queries and normalizes traffic-source rows", async () => {
   const result: Mock = {
     response: {
       columnHeaders: [
-        { name: "trafficSourceType" },
+        { name: "insightTrafficSourceType" },
         { name: "views" },
         { name: "likes" },
         { name: "comments" },
@@ -122,7 +122,7 @@ test("queries and normalizes traffic-source rows", async () => {
     startDate: query.startDate,
     endDate: query.endDate,
     metrics: "views,likes,comments,estimatedMinutesWatched",
-    dimensions: "trafficSourceType",
+    dimensions: "insightTrafficSourceType",
     sort: "-views",
   });
   assert.deepEqual(rows, [
