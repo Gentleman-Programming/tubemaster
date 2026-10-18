@@ -11,9 +11,9 @@ Delivery strategy: `multi-slice` — dashboard controls/presentation, CSV serial
 
 ## Tasks
 
-- T1 (S1-S3) — Add authenticated analytics dashboard controls and daily metric presentation over the existing summary API — commit `d35dd16`.
-- T2 (S1-S3) — Add read-only CSV export for the displayed analytics rows — commit `d35dd16`.
-- T3 (S1-S3) — Validate behavior, accessibility states, API boundaries, and production checks — commit `d35dd16`.
+- T1 (S1-S3) — Add authenticated analytics dashboard controls and daily metric presentation over the existing summary API — commit `69c437e`.
+- T2 (S1-S3) — Add read-only CSV export for the displayed analytics rows — commit `69c437e`.
+- T3 (S1-S3) — Validate behavior, accessibility states, API boundaries, and production checks — commit `69c437e`.
 
 ## Log
 
