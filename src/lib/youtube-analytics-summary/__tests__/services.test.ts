@@ -108,6 +108,28 @@ test("maps auth and provider failures", async () => {
   );
 });
 
+test("returns daily and traffic-source results", async () => {
+  const trafficSources = [{
+    sourceType: "YT_SEARCH",
+    views: 12,
+    likes: 3,
+    comments: 1,
+    estimatedMinutesWatched: 7.5,
+  }];
+  const result = await createYoutubeAnalyticsSummaryService({
+    ...base,
+    youtubeAnalyticsApi: {
+      query: async () => [row],
+      queryTrafficSources: async () => trafficSources,
+    },
+  })(args);
+  assert.equal(result.kind, "analytics-summary");
+  if (result.kind === "analytics-summary") {
+    assert.deepEqual(result.days, [row]);
+    assert.deepEqual(result.trafficSources, trafficSources);
+  }
+});
+
 test("returns normalized and empty results", async () => {
   const result = await createYoutubeAnalyticsSummaryService({
     ...base,

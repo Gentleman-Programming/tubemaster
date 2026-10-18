@@ -103,6 +103,39 @@ test("normalizes missing rows to empty and rejects provider errors", async () =>
   );
 });
 
+test("queries and normalizes traffic-source rows", async () => {
+  const result: Mock = {
+    response: {
+      columnHeaders: [
+        { name: "trafficSourceType" },
+        { name: "views" },
+        { name: "likes" },
+        { name: "comments" },
+        { name: "estimatedMinutesWatched" },
+      ],
+      rows: [["YT_SEARCH", "12", "3", "1", "7.5"]],
+    },
+  };
+  const rows = await createYoutubeAnalyticsApi(call(result)).queryTrafficSources(query);
+  assert.deepEqual(result.args, {
+    ids: "channel==MINE",
+    startDate: query.startDate,
+    endDate: query.endDate,
+    metrics: "views,likes,comments,estimatedMinutesWatched",
+    dimensions: "trafficSourceType",
+    sort: "-views",
+  });
+  assert.deepEqual(rows, [
+    {
+      sourceType: "YT_SEARCH",
+      views: 12,
+      likes: 3,
+      comments: 1,
+      estimatedMinutesWatched: 7.5,
+    },
+  ]);
+});
+
 test("sanitizes 403, 5xx, and network provider failures", async () => {
   for (const failure of [
     Object.assign(new Error("forbidden secret"), { response: { status: 403 } }),

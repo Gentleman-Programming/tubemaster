@@ -13,7 +13,7 @@ TubeMaster is a channel-operations workspace spanning **Web UI, CLI, MCP, and AP
 | MCP | Use context, metadata, transcript, and playlist tools after CLI login; no MCP login or registered quota tool |
 | API | Use authenticated route handlers for video/playlist/rule workflows, metadata/transcripts, and quota estimates |
 
-See [interface details](./interfaces.md) for exact commands and boundaries. Audit events are best-effort service logs, not an audit database. The authenticated analytics dashboard supports 7/30/90-day presets, custom ranges up to 90 days, daily metrics, period-over-period comparison deltas, and local CSV export. Comparisons use the immediately preceding equivalent period and remain read-only; there is no autonomous publishing or one-release promise.
+See [interface details](./interfaces.md) for exact commands and boundaries. Audit events are best-effort service logs, not an audit database. The authenticated analytics dashboard supports 7/30/90-day presets, custom ranges up to 90 days, daily metrics, traffic-source breakdowns, period-over-period comparison deltas, and local CSV export. Comparisons use the immediately preceding equivalent period and remain read-only; there is no autonomous publishing or one-release promise.
 
 ## Prerequisites
 

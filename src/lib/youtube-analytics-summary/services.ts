@@ -78,16 +78,21 @@ export function createYoutubeAnalyticsSummaryService(
       deps.quotaAccountantFactory?.(credentials) ?? deps.quotaAccountant;
     const operationId = deps.operationIdFactory?.() ?? `op-${Date.now()}`;
     try {
-      const days = await deps.youtubeAnalyticsApi.query({
+      const queryArgs = {
         credentials,
         startDate: args.startDate,
         endDate: args.endDate,
-      });
+      };
+      const [days, trafficSources] = await Promise.all([
+        deps.youtubeAnalyticsApi.query(queryArgs),
+        deps.youtubeAnalyticsApi.queryTrafficSources?.(queryArgs) ?? Promise.resolve([]),
+      ]);
       return {
         kind: "analytics-summary",
         startDate: args.startDate,
         endDate: args.endDate,
         days,
+        trafficSources,
       };
     } catch {
       return error("ANALYTICS_API_ERROR", "YouTube Analytics request failed");

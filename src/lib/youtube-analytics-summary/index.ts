@@ -7,6 +7,7 @@ import { createYoutubeAnalyticsSummaryService } from "./services";
 export type {
   AnalyticsSummaryInput,
   AnalyticsDayRow,
+  AnalyticsTrafficSourceRow,
   AnalyticsSummaryResult,
   AnalyticsSummaryError,
   AnalyticsSummaryResponse,

@@ -11,7 +11,7 @@ TubeMaster is a channel-operations workspace across Web UI, CLI, MCP, and API su
 | Playlists | Web UI actions; CLI and MCP list/create/update/delete/add/remove; selected UI API routes |
 | Rules | Web UI create/list/delete/run; `/api/rules` and `/api/run` |
 | Metadata preview/apply, transcript acquisition | CLI, MCP, and metadata API; apply requires expected channel and supports dry run |
-| Analytics summary | Authenticated `GET /api/youtube/analytics` with a range of up to 90 days; the dashboard offers 7/30/90-day presets, custom dates, daily totals, and local CSV export |
+| Analytics summary | Authenticated `GET /api/youtube/analytics` with a range of up to 90 days; the dashboard offers 7/30/90-day presets, custom dates, daily totals, traffic-source breakdowns, period comparison, and local CSV export |
 | Quota visibility | Web UI, separate quota CLI, and quota API; MCP quota handler is not registered |
 | Operation audit events | Best-effort metadata, transcript, and playlist service logs; not a queryable audit store |
 
@@ -47,8 +47,8 @@ The local development server uses port `3102` by default. Set `NEXTAUTH_URL=http
   - Run matching engine (`/api/run`) over recent videos.
 - **Analytics**
   - View daily views, likes, comments, and estimated minutes watched for the last 7, 30, or 90 days, or a custom range up to 90 days.
-  - Compare current totals with the immediately preceding equivalent period, including absolute and percentage deltas; a zero baseline is shown as `New` rather than an invented percentage.
-  - Export the displayed daily analytics rows as a local CSV file; comparison loading is read-only and performs no persistence or analytics write.
+  - Compare current totals and traffic-source views with the immediately preceding equivalent period, including absolute and percentage deltas; a zero baseline is shown as `New` rather than an invented percentage.
+  - Export the displayed daily analytics rows and traffic-source breakdown as a local CSV file; comparison loading is read-only and performs no persistence or analytics write.
 - **Quota usage** (`/dashboard/quota`)
   - View estimated usage grouped by bucket date, operation, and channel.
   - Unassigned usage is shown as `Unassigned`; estimates are observational and not authoritative Google quota usage.
@@ -142,7 +142,7 @@ All routes are App Router handlers and require authenticated session user.
 
 - `GET /api/youtube/analytics?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD`
   - Requires an authenticated session, a valid date range, and an OAuth grant containing `https://www.googleapis.com/auth/yt-analytics.readonly`. This optional analytics scope is not requested by the default core login scopes; without it the route returns `AUTH_SCOPE_INSUFFICIENT` (403). Add the scope to the authorization request and re-authenticate existing users to grant it. This is distinct from the Web UI's local selected-video export and does not imply analytics writes.
-  - The dashboard comparison uses this same endpoint twice: once for the selected range and once for the immediately preceding equivalent range. Each request remains bounded by the existing 90-day limit; no comparison data is persisted.
+  - The dashboard comparison uses this same endpoint twice: once for the selected range and once for the immediately preceding equivalent range. Each request remains bounded by the existing 90-day limit; no comparison data is persisted. Responses include daily metrics and a `trafficSources` array keyed by `sourceType`.
 
 ### Quota usage API
 

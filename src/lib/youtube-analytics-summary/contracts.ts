@@ -2,18 +2,22 @@ import type { ResolvedCredentials } from "../video-metadata/contracts";
 import type { QuotaAccountant } from "../quota/accountant";
 
 export type AnalyticsSummaryInput = { startDate: string; endDate: string };
-export type AnalyticsDayRow = {
-  date: string;
+export type AnalyticsMetricRow = {
   views: number;
   likes: number;
   comments: number;
   estimatedMinutesWatched: number;
+};
+export type AnalyticsDayRow = AnalyticsMetricRow & { date: string };
+export type AnalyticsTrafficSourceRow = AnalyticsMetricRow & {
+  sourceType: string;
 };
 export type AnalyticsSummaryResult = {
   kind: "analytics-summary";
   startDate: string;
   endDate: string;
   days: AnalyticsDayRow[];
+  trafficSources: AnalyticsTrafficSourceRow[];
 };
 export type AnalyticsSummaryErrorCode =
   | "INVALID_INPUT"
@@ -42,6 +46,11 @@ export type AnalyticsSummaryDependencies = {
       startDate: string;
       endDate: string;
     }): Promise<AnalyticsDayRow[]>;
+    queryTrafficSources?: (args: {
+      credentials: ResolvedCredentials;
+      startDate: string;
+      endDate: string;
+    }) => Promise<AnalyticsTrafficSourceRow[]>;
   };
   quotaAccountant?: QuotaAccountant;
   quotaAccountantFactory?: (

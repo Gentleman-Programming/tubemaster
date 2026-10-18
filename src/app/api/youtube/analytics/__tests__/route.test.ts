@@ -49,6 +49,7 @@ test("maps auth, validation, scope, provider and success statuses", async () => 
         startDate: "2025-01-01",
         endDate: "2025-01-15",
         days: [],
+        trafficSources: [],
       })(url)
     ).status,
     200,
