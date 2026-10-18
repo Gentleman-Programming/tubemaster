@@ -1,0 +1,6 @@
+# Issue #99 task mirror
+
+- T1 [done] (S2-S6): Triage direct, transitive, runtime, and development advisories; commit: pending
+- T2 [done] (S2-S6): Apply compatible patched dependency upgrades and lockfile changes; commit: pending
+- T3 [done] (S3-S6): Run audit, tests, lint, typecheck, build, and compatibility checks; commit: pending
+- T4 [blocked] (S2-S6): Publish the approved security remediation PR linked to issue #99; commit: pending; waits for explicit publication authorization
