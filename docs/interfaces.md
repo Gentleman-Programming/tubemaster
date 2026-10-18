@@ -30,8 +30,9 @@ The local development server uses port `3102` by default. Set `NEXTAUTH_URL=http
 ### Login flow
 
 1. Open home page.
-2. Click **Sign in with Google**.
+2. Click **Sign in with Google** and grant the requested YouTube and Analytics read-only scopes.
 3. On success, app redirects to `/dashboard`.
+4. Existing users must sign out and sign in again after a new scope is introduced so Google can issue an updated grant.
 
 ### Dashboard tabs
 

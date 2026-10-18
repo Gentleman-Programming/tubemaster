@@ -14,14 +14,14 @@ test("YOUTUBE_ANALYTICS_READ_SCOPE equals the analytics readonly scope", () => {
   );
 });
 
-test("YOUTUBE_SCOPES array does not include analytics scope and length is unchanged", () => {
+test("YOUTUBE_SCOPES includes the analytics readonly scope", () => {
   assert.equal(
     (YOUTUBE_SCOPES as readonly string[]).includes(
       YOUTUBE_ANALYTICS_READ_SCOPE,
     ),
-    false,
+    true,
   );
-  assert.equal(YOUTUBE_SCOPES.length, 6);
+  assert.equal(YOUTUBE_SCOPES.length, 7);
 });
 
 test("default YouTube scopes include youtube.force-ssl", () => {

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
-import { nextChannelThumbnail, withProfileImageFallback } from "@/components/channel-thumbnail";
+import { nextChannelThumbnail } from "@/components/channel-thumbnail";
 
 type ChannelInfo = {
   id: string;
@@ -21,10 +21,7 @@ export function DashboardHeader() {
   const [failedThumbnail, setFailedThumbnail] = useState<string | undefined>();
   const channel = channelState.status === "ready" ? channelState.channel : null;
   const candidates = channel
-    ? withProfileImageFallback(
-        channel.thumbnailCandidates ?? (channel.thumbnail ? [channel.thumbnail] : []),
-        session?.user?.image,
-      )
+    ? channel.thumbnailCandidates ?? (channel.thumbnail ? [channel.thumbnail] : [])
     : [];
   const thumbnail = failedThumbnail === undefined
     ? candidates[0]

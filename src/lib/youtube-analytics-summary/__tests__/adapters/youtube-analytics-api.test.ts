@@ -55,6 +55,34 @@ test("uses exact reports.query parameters and normalizes rows", async () => {
   ]);
 });
 
+test("normalizes the native Google response data envelope", async () => {
+  const rows = await createYoutubeAnalyticsApi(() => ({
+    reports: {
+      query: async () => ({
+        data: {
+          columnHeaders: [
+            { name: "day" },
+            { name: "views" },
+            { name: "likes" },
+            { name: "comments" },
+            { name: "estimatedMinutesWatched" },
+          ],
+          rows: [["2025-01-02", 11, 3, 1, 6]],
+        },
+      }),
+    },
+  })).query(query);
+  assert.deepEqual(rows, [
+    {
+      date: "2025-01-02",
+      views: 11,
+      likes: 3,
+      comments: 1,
+      estimatedMinutesWatched: 6,
+    },
+  ]);
+});
+
 test("normalizes missing rows to empty and rejects provider errors", async () => {
   assert.deepEqual(
     await createYoutubeAnalyticsApi(call({ response: { rows: null } })).query(

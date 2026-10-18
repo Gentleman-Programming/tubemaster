@@ -7,6 +7,11 @@ type Response = {
   rows?: unknown[][] | null;
   columnHeaders?: { name: string }[];
 };
+type ProviderResponse = Response | { data: unknown };
+
+function responseData(response: ProviderResponse): Response {
+  return "data" in response ? (response.data as Response) : response;
+}
 const params = (startDate: string, endDate: string) => ({
   ids: "channel==MINE",
   startDate,
@@ -18,7 +23,7 @@ const params = (startDate: string, endDate: string) => ({
 
 export function createYoutubeAnalyticsApi(
   factory?: () => {
-    reports: { query(args: Record<string, unknown>): Promise<Response> };
+    reports: { query(args: Record<string, unknown>): Promise<ProviderResponse> };
   },
 ) {
   return {
@@ -28,7 +33,7 @@ export function createYoutubeAnalyticsApi(
       endDate: string;
     }): Promise<AnalyticsDayRow[]> {
       try {
-        let response: Response;
+        let response: ProviderResponse;
         if (factory)
           response = await factory().reports.query(
             params(args.startDate, args.endDate),
@@ -40,14 +45,15 @@ export function createYoutubeAnalyticsApi(
             access_token: args.credentials.accessToken,
             refresh_token: args.credentials.refreshToken,
           });
-          response = (await google
+          response = await google
             .youtubeAnalytics({ version: "v2", auth: oauth2 })
-            .reports.query(params(args.startDate, args.endDate))) as Response;
+            .reports.query(params(args.startDate, args.endDate));
         }
+        const data = responseData(response);
         const headers = new Map(
-          (response.columnHeaders ?? []).map((h, i) => [h.name, i]),
+          (data.columnHeaders ?? []).map((h, i) => [h.name, i]),
         );
-        return (response.rows ?? []).map((row) => {
+        return (data.rows ?? []).map((row) => {
           const value = (name: string) => Number(row[headers.get(name) ?? -1]);
           const [date, views, likes, comments, estimatedMinutesWatched] = [
             "day",
