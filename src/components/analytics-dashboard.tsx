@@ -24,7 +24,7 @@ type AnalyticsComparisonResult = {
 };
 
 const csvHeader = "date,views,likes,comments,estimatedMinutesWatched";
-const trafficSourceCsvHeader = "trafficSource,views,likes,comments,estimatedMinutesWatched";
+const trafficSourceCsvHeader = "trafficSource,views,estimatedMinutesWatched";
 
 function formatDate(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -89,8 +89,8 @@ export function serializeAnalyticsCsv(
   const rows = days.map(({ date, views, likes, comments, estimatedMinutesWatched }) =>
     [date, views, likes, comments, estimatedMinutesWatched].map(csvCell).join(","),
   );
-  const sourceRows = trafficSources.map(({ sourceType, views, likes, comments, estimatedMinutesWatched }) =>
-    [sourceType, views, likes, comments, estimatedMinutesWatched].map(csvCell).join(","),
+  const sourceRows = trafficSources.map(({ sourceType, views, estimatedMinutesWatched }) =>
+    [sourceType, views, estimatedMinutesWatched].map(csvCell).join(","),
   );
   return [csvHeader, ...rows, ...(sourceRows.length ? ["", trafficSourceCsvHeader, ...sourceRows] : [])].join("\r\n");
 }
@@ -272,10 +272,10 @@ export function AnalyticsDashboard() {
                 <table className="min-w-full text-left text-sm">
                   <caption className="sr-only">Traffic sources for the selected period</caption>
                   <thead className="bg-zinc-900 text-xs uppercase text-zinc-500">
-                    <tr>{["Source", "Views", "Likes", "Comments", "Minutes watched", "vs previous"].map((heading) => <th key={heading} scope="col" className="px-4 py-3">{heading}</th>)}</tr>
+                    <tr>{["Source", "Views", "Minutes watched", "vs previous"].map((heading) => <th key={heading} scope="col" className="px-4 py-3">{heading}</th>)}</tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-800">
-                    {trafficSources.map((source) => <tr key={source.sourceType} className="text-zinc-300"><th scope="row" className="px-4 py-3 font-medium text-white">{source.sourceType}</th><td className="px-4 py-3">{source.views.toLocaleString()}</td><td className="px-4 py-3">{source.likes.toLocaleString()}</td><td className="px-4 py-3">{source.comments.toLocaleString()}</td><td className="px-4 py-3">{source.estimatedMinutesWatched.toLocaleString(undefined, { maximumFractionDigits: 1 })}</td><td className="px-4 py-3">{formatAnalyticsDelta(source.delta)}</td></tr>)}
+                    {trafficSources.map((source) => <tr key={source.sourceType} className="text-zinc-300"><th scope="row" className="px-4 py-3 font-medium text-white">{source.sourceType}</th><td className="px-4 py-3">{source.views.toLocaleString()}</td><td className="px-4 py-3">{source.estimatedMinutesWatched.toLocaleString(undefined, { maximumFractionDigits: 1 })}</td><td className="px-4 py-3">{formatAnalyticsDelta(source.delta)}</td></tr>)}
                   </tbody>
                 </table>
               </div>

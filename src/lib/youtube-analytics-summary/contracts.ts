@@ -9,8 +9,10 @@ export type AnalyticsMetricRow = {
   estimatedMinutesWatched: number;
 };
 export type AnalyticsDayRow = AnalyticsMetricRow & { date: string };
-export type AnalyticsTrafficSourceRow = AnalyticsMetricRow & {
+export type AnalyticsTrafficSourceRow = {
   sourceType: string;
+  views: number;
+  estimatedMinutesWatched: number;
 };
 export type AnalyticsSummaryResult = {
   kind: "analytics-summary";

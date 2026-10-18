@@ -101,10 +101,8 @@ test("appends traffic-source metrics to the local CSV export", () => {
     serializeAnalyticsCsv([], [{
       sourceType: "EXTERNAL,REFERRAL",
       views: 12,
-      likes: 3,
-      comments: 1,
       estimatedMinutesWatched: 7.5,
     }]),
-    "date,views,likes,comments,estimatedMinutesWatched\r\n\r\ntrafficSource,views,likes,comments,estimatedMinutesWatched\r\n\"EXTERNAL,REFERRAL\",12,3,1,7.5",
+    "date,views,likes,comments,estimatedMinutesWatched\r\n\r\ntrafficSource,views,estimatedMinutesWatched\r\n\"EXTERNAL,REFERRAL\",12,7.5",
   );
 });

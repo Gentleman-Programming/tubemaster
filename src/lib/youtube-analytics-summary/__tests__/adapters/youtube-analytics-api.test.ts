@@ -109,11 +109,9 @@ test("queries and normalizes traffic-source rows", async () => {
       columnHeaders: [
         { name: "insightTrafficSourceType" },
         { name: "views" },
-        { name: "likes" },
-        { name: "comments" },
         { name: "estimatedMinutesWatched" },
       ],
-      rows: [["YT_SEARCH", "12", "3", "1", "7.5"]],
+      rows: [["YT_SEARCH", "12", "7.5"]],
     },
   };
   const rows = await createYoutubeAnalyticsApi(call(result)).queryTrafficSources(query);
@@ -121,7 +119,7 @@ test("queries and normalizes traffic-source rows", async () => {
     ids: "channel==MINE",
     startDate: query.startDate,
     endDate: query.endDate,
-    metrics: "views,likes,comments,estimatedMinutesWatched",
+    metrics: "views,estimatedMinutesWatched",
     dimensions: "insightTrafficSourceType",
     sort: "-views",
   });
@@ -129,8 +127,6 @@ test("queries and normalizes traffic-source rows", async () => {
     {
       sourceType: "YT_SEARCH",
       views: 12,
-      likes: 3,
-      comments: 1,
       estimatedMinutesWatched: 7.5,
     },
   ]);
