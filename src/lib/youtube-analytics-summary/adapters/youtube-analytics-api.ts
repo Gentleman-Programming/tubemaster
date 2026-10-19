@@ -34,7 +34,8 @@ const dayParams = (startDate: string, endDate: string) => ({
 });
 const trafficSourceParams = (startDate: string, endDate: string) => ({
   ...baseParams(startDate, endDate),
-  dimensions: "trafficSourceType",
+  metrics: "views,estimatedMinutesWatched",
+  dimensions: "insightTrafficSourceType",
   sort: "-views",
 });
 
@@ -113,13 +114,17 @@ export function createYoutubeAnalyticsApi(
       return run(
         args,
         trafficSourceParams(args.startDate, args.endDate),
-        "trafficSourceType",
+        "insightTrafficSourceType",
         (value) => {
-          const rawSourceType = value("trafficSourceType");
+          const rawSourceType = value("insightTrafficSourceType");
           const sourceType = String(rawSourceType ?? "");
           if (!sourceType)
             throw new DomainError({ code: "unauthorized", message: "Malformed analytics response" });
-          return { sourceType, ...metrics(value) };
+          const views = Number(value("views"));
+          const estimatedMinutesWatched = Number(value("estimatedMinutesWatched"));
+          if (![views, estimatedMinutesWatched].every(Number.isFinite))
+            throw new DomainError({ code: "unauthorized", message: "Malformed analytics response" });
+          return { sourceType, views, estimatedMinutesWatched };
         },
       );
     },

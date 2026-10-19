@@ -112,8 +112,6 @@ test("returns daily and traffic-source results", async () => {
   const trafficSources = [{
     sourceType: "YT_SEARCH",
     views: 12,
-    likes: 3,
-    comments: 1,
     estimatedMinutesWatched: 7.5,
   }];
   const result = await createYoutubeAnalyticsSummaryService({

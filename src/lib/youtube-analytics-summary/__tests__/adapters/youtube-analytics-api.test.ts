@@ -107,13 +107,11 @@ test("queries and normalizes traffic-source rows", async () => {
   const result: Mock = {
     response: {
       columnHeaders: [
-        { name: "trafficSourceType" },
+        { name: "insightTrafficSourceType" },
         { name: "views" },
-        { name: "likes" },
-        { name: "comments" },
         { name: "estimatedMinutesWatched" },
       ],
-      rows: [["YT_SEARCH", "12", "3", "1", "7.5"]],
+      rows: [["YT_SEARCH", "12", "7.5"]],
     },
   };
   const rows = await createYoutubeAnalyticsApi(call(result)).queryTrafficSources(query);
@@ -121,16 +119,14 @@ test("queries and normalizes traffic-source rows", async () => {
     ids: "channel==MINE",
     startDate: query.startDate,
     endDate: query.endDate,
-    metrics: "views,likes,comments,estimatedMinutesWatched",
-    dimensions: "trafficSourceType",
+    metrics: "views,estimatedMinutesWatched",
+    dimensions: "insightTrafficSourceType",
     sort: "-views",
   });
   assert.deepEqual(rows, [
     {
       sourceType: "YT_SEARCH",
       views: 12,
-      likes: 3,
-      comments: 1,
       estimatedMinutesWatched: 7.5,
     },
   ]);
