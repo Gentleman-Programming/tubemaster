@@ -82,3 +82,46 @@ export function isSocialPlatform(value: unknown): value is SocialPlatform {
 export function isSocialPostStatus(value: unknown): value is SocialPostStatus {
   return typeof value === "string" && (SOCIAL_POST_STATUSES as readonly string[]).includes(value);
 }
+
+/** Provider failure categories; the worker maps them to a `failed` post without retrying. */
+export type SocialPublishErrorCode = "AUTH_EXPIRED" | "RATE_LIMITED" | "REJECTED" | "PROVIDER_ERROR";
+
+export class SocialPublishError extends Error {
+  readonly code: SocialPublishErrorCode;
+  constructor(code: SocialPublishErrorCode, message: string) {
+    super(message);
+    this.name = "SocialPublishError";
+    this.code = code;
+  }
+}
+
+export type SocialPublishRequest = {
+  account: SocialAccount;
+  tokens: SocialAccountTokens;
+  /** Absolute path of a validated, read-only snapshot of the staged video. */
+  videoPath: string;
+  caption: string;
+  platformOptions: JsonObject;
+};
+
+export type SocialPublishResult = {
+  externalPostId: string;
+  /** Present when the publisher refreshed the tokens and the caller must persist them. */
+  refreshedTokens?: SocialAccountTokens;
+};
+
+export interface SocialPublisher {
+  readonly platform: SocialPlatform;
+  publish(request: SocialPublishRequest): Promise<SocialPublishResult>;
+}
+
+export interface SocialOAuthConnector {
+  readonly platform: SocialPlatform;
+  authorizationUrl(args: { state: string; codeChallenge: string; redirectUri: string }): string;
+  exchangeCode(args: {
+    code: string;
+    codeVerifier: string;
+    redirectUri: string;
+  }): Promise<{ profile: SocialAccountProfile; tokens: SocialAccountTokens }>;
+  refreshTokens(tokens: SocialAccountTokens): Promise<SocialAccountTokens>;
+}
