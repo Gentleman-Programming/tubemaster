@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/libsql";
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import path from "path";
 import { eq } from "drizzle-orm";
+import { initializeSocialTables } from "./social/storage";
 
 const rawClient = createClient({
   url: `file:${path.join(process.cwd(), "data", "playlist-manager.db")}`,
@@ -87,6 +88,8 @@ async function initializeDatabase() {
   } catch {
     // Column already exists
   }
+
+  await initializeSocialTables(rawClient);
 }
 
 export const databaseInitialization = initializeDatabase().catch((error: unknown) => {
