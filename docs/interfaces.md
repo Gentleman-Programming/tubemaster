@@ -161,6 +161,19 @@ All routes are App Router handlers and require authenticated session user.
   - Results always use the authenticated session user; scope overrides are rejected.
   - Values are estimated recorded usage, not authoritative remaining YouTube quota.
 
+### Social publishing API
+
+Session-authenticated; setup in [social-publishing.md](./social-publishing.md). Errors return `{ error: <CODE>, message }`.
+
+- `GET /api/social/accounts` — connected accounts (no tokens); `DELETE /api/social/accounts?platform=<tiktok|instagram>` disconnects.
+- `GET /api/social/tiktok/connect`, `GET /api/social/instagram/connect` — start OAuth (full-page navigation); callbacks redirect to `/dashboard/social?connected=<platform>` or `?error=<code>`.
+- `GET /api/social/posts[?status=<status>]` — list posts.
+- `POST /api/social/posts` — create a draft and return its preview plus `confirmationToken`; nothing is published.
+- `GET /api/social/posts/<id>` — one post.
+- `POST /api/social/posts/<id>/confirm` — `{ confirmationToken }`; schedules the draft.
+- `POST /api/social/posts/<id>/reschedule` — `{ schedule }`; returns the post to draft with a new preview and token.
+- `POST /api/social/posts/<id>/cancel` — cancel a draft, scheduled or missed post.
+
 ### Playlist / video API used by UI
 
 - `GET /api/youtube/videos`

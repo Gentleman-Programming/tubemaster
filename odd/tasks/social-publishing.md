@@ -21,13 +21,13 @@ Objective: publish videos now or at a scheduled time to X, Instagram and TikTok 
 | ID | Specs | Task | Route | Risk | Status | Commit |
 |----|-------|------|-------|------|--------|--------|
 | T1 | S5, S8 | Token encryption helper + `social_accounts` / `social_posts` tables | delegated (context backstop) | high: stored data, credentials | done (RED: modules missing → GREEN crypto 8/8, storage 9/9; npm test/tsc/lint exit 0; parent re-ran storage 9/9) | T1 commit |
-| T2 | S3, S4, S8 | Post queue service: draft, preview, confirm (HMAC), cancel, reschedule, list | delegated | high: data mutations | pending | |
-| T3 | S3, S9 | In-app worker: instrumentation, atomic claim, missed policy, dispatch | delegated | high: concurrency | pending | |
+| T2 | S3, S4, S8 | Post queue service: draft, preview, confirm (HMAC), cancel, reschedule, list | delegated (parallel with T5) | high: data mutations | done (RED → GREEN staged 4/4, service 10/10, routes 5/5) | 79e24a3 (contracts 57d7c54) |
+| T3 | S3, S9 | In-app worker: instrumentation, atomic claim, missed policy, dispatch | delegated (parallel with T6) | high: concurrency | done (RED → GREEN worker 17/17, index 6/6; mutation-checked non-overlap) | 3d7190f, f1a9a4a (Instagram wiring, parent) |
 | T4 | S5, S7 | X: OAuth connect routes + publish adapter | — | — | dropped (deferred, L6) | |
-| T5 | S5, S7 | TikTok: OAuth connect routes + publish adapter | delegated (parallel) | high: credentials | pending | |
-| T6 | S5, S7 | Instagram: OAuth connect routes + resumable publish adapter | delegated (parallel) | high: credentials | pending | |
-| T7 | S10 | Social dashboard page | delegated | medium | pending | |
-| T8 | S11 | Setup docs per platform | delegated with T7 | passive | pending | |
+| T5 | S5, S7 | TikTok: OAuth connect routes + publish adapter | delegated (parallel with T2) | high: credentials | done (RED → GREEN oauth 7/7, connector 4/4, publisher 10/10, routes 7/7) | 237ef48 |
+| T6 | S5, S7 | Instagram: OAuth connect routes + resumable publish adapter | delegated (parallel with T3) | high: credentials | done (RED → GREEN connector 6/6, publisher 10/10, routes 6/6) | 49c55a4 |
+| T7 | S10 | Social dashboard page | delegated (with T8) | medium | done (RED → GREEN presentation 15/15, accounts 6/6, composer 9/9, queue 5/5; sidebar link by parent) | UI commit |
+| T8 | S11 | Setup docs per platform | delegated (with T7) | passive | done (structural readback) | this commit |
 
 Dependencies: T1 first; then T2 and T4-T6 (adapters depend on T1 contracts); T3 after T2; T7/T8 after T2. Files owned by `feat/issue-89-scheduling-ui` (Eloy, unmerged) are not edited: `src/lib/video-scheduling/*`, `src/components/dashboard-upload-form.tsx`, `src/app/api/youtube/schedule/*` (import of `toUnambiguousUtc` only).
 
@@ -42,3 +42,4 @@ Verification: high-risk units get writer self-verification plus one independent 
 - **L5** (2026-10-21, evidence): DB uses raw `CREATE TABLE IF NOT EXISTS` in `initializeDatabase()` (`src/lib/db.ts:40-89`) behind an init-gating Proxy; Google tokens plaintext; no encryption helper; staged files referenced by `stagingFile` (`src/lib/video-upload/adapter.ts:10`); no `instrumentation.ts` yet; Next docs: `register()` once per server instance, gate on `NEXT_RUNTIME === "nodejs"`.
 - **L6** (2026-10-21, user choice after cost question "y no se puede hacer de otra manera? que no haya que pagar?"): "Sin X por ahora" — only Instagram and TikTok (both free APIs). X stays deferred; `SocialPlatform` excludes "x".
 - **L7** (2026-10-21, evidence): T1 done. `db.ts` diff is one import + `await initializeSocialTables(rawClient)` (must be rawClient: the gating Proxy would deadlock). Tokens in `social_accounts.access_token_enc/refresh_token_enc` (`v1.<iv>.<tag>.<ct>`, HKDF-SHA256 from NEXTAUTH_SECRET, version as AAD). `transitionPost` = single conditional UPDATE (atomic claim). No FK/CHECK constraints by design; `deleteAccount` leaves posts (T2 decides).
+- **L8** (2026-10-21, evidence): T2-T8 done via bounded writers (context backstop; parallel pairs T2∥T5, T3∥T6, T7/T8∥T3). Known open risks to confirm on the first real run: TikTok/Instagram endpoints, versions and response shapes (`src/lib/social/platforms/*/endpoints.ts`); Instagram long-lived token re-exchange; rupload without Content-Length; tokens refreshed then publish failure are not persisted; single app instance per DB assumed by INTERRUPTED recovery. Independent verifier pending.
