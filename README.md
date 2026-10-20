@@ -29,8 +29,8 @@ Full walkthrough: **[docs/getting-started.md](docs/getting-started.md)**. The de
 | Interface | Entry point | Current scope |
 | --- | --- | --- |
 | Web UI | `http://localhost:3102` | Browse/select/export videos, playlist actions, rules, estimated quota usage, read-only best publish times panel |
-| CLI | `npm run cli:video-metadata -- <command>` | Auth/channel context, metadata and transcript workflows, playlists; quota has a separate command |
-| MCP Server (stdio) | `npm run mcp:video-metadata` | Context, metadata, transcripts, playlists; no login or registered quota tool |
+| CLI | `npm run cli:video-metadata -- <command>` | Auth/channel context, metadata and transcript workflows, playlists, read-only `best-times --timezone <IANA>`; quota has a separate command |
+| MCP Server (stdio) | `npm run mcp:video-metadata` | Context, metadata, transcripts, playlists, read-only `best_publish_times` (`timezone` required); no login or registered quota tool |
 | API Route Handlers | `/api/youtube/videos`, `/api/video-metadata/*`, `/api/youtube/best-publish-times` | Session-authenticated UI operations, metadata/transcripts, estimated quota usage |
 
 Detailed usage by interface: **[docs/interfaces.md](docs/interfaces.md)**
@@ -63,6 +63,9 @@ npm run cli:video-metadata -- playlist add --playlistId <PLAYLIST_ID> --videoIds
 npm run cli:video-metadata -- transcript --videoId <VIDEO_ID>
 npm run cli:video-metadata -- preview --videoId <VIDEO_ID> --editorialPrompt "Hacé un título claro"
 npm run cli:video-metadata -- apply --videoId <VIDEO_ID> --finalTitle "Nuevo título" --description "Nueva descripción" --expectedChannelId <CHANNEL_ID> --dryRun
+
+# Read-only best publish times estimate (needs yt-analytics.readonly)
+npm run cli:video-metadata -- best-times --timezone America/Argentina/Buenos_Aires
 ```
 
 ## Environment Variables

@@ -1195,3 +1195,129 @@ test("MCP playlist_delete fails closed on unresolved channel with stable details
     expectedChannelId: "UC_ACTIVE",
   });
 });
+
+const bestPublishTimesResult = {
+  kind: "best-publish-times" as const,
+  timezone: "America/Argentina/Buenos_Aires",
+  analyzedVideos: 12,
+  excludedVideos: 1,
+  channelMedianEarlyViews: 1000,
+  confidence: "normal" as const,
+  slots: [
+    {
+      weekday: "tuesday" as const,
+      startHour: 18,
+      endHour: 21,
+      score: 1.4,
+      sampleSize: 3,
+      medianEarlyViews: 1400,
+    },
+  ],
+  method: {
+    maxVideos: 50,
+    minVideoAgeDays: 4,
+    earlyWindowDays: 3,
+    slotHours: 3,
+    minSlotSamples: 2,
+  },
+};
+
+test("MCP best_publish_times forwards timezone and resolved credentialRef to the core", async () => {
+  const calls: unknown[] = [];
+  const core = {
+    ...makeCoreStub(),
+    fetchBestPublishTimes: async (input: { credentialRef: unknown; timezone: string }) => {
+      calls.push(input);
+      return bestPublishTimesResult;
+    },
+  };
+
+  const handlers = createMcpToolHandlers(core, makeAuthStub());
+  const fallback = await handlers.bestPublishTimes({ timezone: "America/Argentina/Buenos_Aires" });
+  await handlers.bestPublishTimes({
+    timezone: "UTC",
+    credentialRef: { userId: "explicit-user" },
+  });
+
+  assert.equal(fallback.isError, undefined);
+  assert.deepEqual(fallback.structuredContent, bestPublishTimesResult);
+  assert.deepEqual(JSON.parse(fallback.content[0]?.text ?? "{}"), bestPublishTimesResult);
+  assert.deepEqual(calls, [
+    { credentialRef: { userId: "active-user" }, timezone: "America/Argentina/Buenos_Aires" },
+    { credentialRef: { userId: "explicit-user" }, timezone: "UTC" },
+  ]);
+});
+
+test("MCP best_publish_times rejects missing or empty timezone before calling the core", async () => {
+  let called = false;
+  const core = {
+    ...makeCoreStub(),
+    fetchBestPublishTimes: async () => {
+      called = true;
+      return bestPublishTimesResult;
+    },
+  };
+
+  const handlers = createMcpToolHandlers(core, makeAuthStub());
+  for (const input of [{}, { timezone: "" }]) {
+    const result = await handlers.bestPublishTimes(input);
+    assert.equal(result.isError, true);
+    const payload = JSON.parse(result.content[0]?.text ?? "{}");
+    assert.equal(payload.ok, false);
+    assert.equal(payload.error.code, "validation_failed");
+  }
+  assert.equal(called, false);
+});
+
+test("MCP best_publish_times surfaces core errors with the structured error envelope", async () => {
+  const core = {
+    ...makeCoreStub(),
+    fetchBestPublishTimes: async () => ({
+      kind: "best-publish-times-error" as const,
+      code: "AUTH_SCOPE_INSUFFICIENT" as const,
+      message: "Reauthorization with the yt-analytics.readonly scope is required.",
+      requiredScopes: ["yt-analytics.readonly"] as ["yt-analytics.readonly"],
+    }),
+  };
+
+  const handlers = createMcpToolHandlers(core, makeAuthStub());
+  const result = await handlers.bestPublishTimes({ timezone: "UTC" });
+
+  assert.equal(result.isError, true);
+  assert.equal(result.structuredContent, undefined);
+  assert.deepEqual(JSON.parse(result.content[0]?.text ?? "{}"), {
+    ok: false,
+    error: {
+      code: "AUTH_SCOPE_INSUFFICIENT",
+      message: "Reauthorization with the yt-analytics.readonly scope is required.",
+      details: { requiredScopes: ["yt-analytics.readonly"] },
+    },
+  });
+});
+
+test("MCP server registers best_publish_times alongside the existing tools", () => {
+  const server = createMcpServer({
+    ...makeCoreStub(),
+    fetchBestPublishTimes: async () => bestPublishTimesResult,
+  });
+  const tools = (server as unknown as { _registeredTools?: Record<string, unknown> })._registeredTools;
+
+  assert.deepEqual(Object.keys(tools ?? {}).sort(), [
+    "apply",
+    "auth_user_select",
+    "best_publish_times",
+    "list",
+    "playlist_add_videos",
+    "playlist_create",
+    "playlist_delete",
+    "playlist_list",
+    "playlist_remove_videos",
+    "playlist_update",
+    "preview",
+    "transcript",
+    "whoami",
+    "write_channel_list",
+    "write_channel_select",
+    "write_context",
+  ]);
+});
