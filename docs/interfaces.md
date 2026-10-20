@@ -144,6 +144,11 @@ All routes are App Router handlers and require authenticated session user.
   - Requires an authenticated session, a valid date range, and an OAuth grant containing `https://www.googleapis.com/auth/yt-analytics.readonly`. This optional analytics scope is not requested by the default core login scopes; without it the route returns `AUTH_SCOPE_INSUFFICIENT` (403). Add the scope to the authorization request and re-authenticate existing users to grant it. This is distinct from the Web UI's local selected-video export and does not imply analytics writes.
   - The dashboard comparison uses this same endpoint twice: once for the selected range and once for the immediately preceding equivalent range. Each request remains bounded by the existing 90-day limit; no comparison data is persisted. Responses include daily metrics and a `trafficSources` array keyed by `sourceType`.
 
+### Best publish times API
+
+- `GET /api/youtube/best-publish-times?timezone=<IANA>`
+  - Read-only estimate of the best weekday/3-hour publish slots from the channel's own recent uploads; requires `https://www.googleapis.com/auth/yt-analytics.readonly` and never publishes or schedules anything.
+
 ### Quota usage API
 
 - `GET /api/quota/usage`

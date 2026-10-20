@@ -18,13 +18,13 @@ Objective: recommend the best weekday/hour slots to publish on YouTube from the 
 | ID | Specs | Task | Route | Status | Commit |
 |----|-------|------|-------|--------|--------|
 | T1 | S3, S4 | Adapter: video publish times + per-video early views | inline | done (RED: module missing → GREEN 5/5, tsc OK) | f348f3e |
-| T2 | S2, S4, S5, S6, S7 | Service: slot bucketing, scoring, confidence, error contract | delegated (context backstop at ~150k parent tokens) | done (RED: modules missing → GREEN slots 4/4, services 6/6, tsc OK; parent re-ran services 6/6) | pending-commit |
-| T3 | S7, S8 | API route `GET /api/youtube/best-publish-times` | inline | pending | |
-| T4 | S6, S8 | Dashboard panel + docs | inline | pending | |
+| T2 | S2, S4, S5, S6, S7 | Service: slot bucketing, scoring, confidence, error contract | delegated (context backstop at ~150k parent tokens) | done (RED: modules missing → GREEN slots 4/4, services 6/6, tsc OK; parent re-ran services 6/6) | 1f00a47 |
+| T3 | S7, S8 | API route `GET /api/youtube/best-publish-times` | delegated (parallel with T4, disjoint surfaces) | done (RED: module missing → GREEN 7/7; parent re-ran 7/7) | slice 3 (see git log) |
+| T4 | S6, S8 | Dashboard panel + docs | delegated (parallel with T3, disjoint surfaces) | done (RED: modules missing → GREEN presentation 6/6, panel 5/5) | slice 4 (this commit) |
 
 Route evidence: no Writer trigger (tasks are sequential and depend on each other); inline. Risk tier: medium (new read-only endpoint, no stored data, existing scope) — writer self-verification, no independent verifier.
 
-Forecast: ~700 authored changed lines (exceeds ~400). Chain strategy: `feature-branch-chain` — integration branch `feature/best-publish-times` from `origin/feature-2`; slice PRs into it: slice 1 = T1, slice 2 = T2, slice 3 = T3+T4; final PR integration → `feature-2`.
+Forecast: ~700 authored changed lines (exceeds ~400). Chain strategy: `feature-branch-chain` — integration branch `feature/best-publish-times` from `origin/feature-2`; slice PRs into it: slice 1 = T1 (`feat/best-publish-times-01-adapter`), slice 2 = T2 (`-02-service`), slice 3 = T3 (`-03-route`), slice 4 = T4 (`-04-panel`); each child PR targets its parent branch, PR 1 targets the tracker; draft tracker PR `feature/best-publish-times` → `feature-2`.
 
 ## Log
 
@@ -33,3 +33,5 @@ Forecast: ~700 authored changed lines (exceeds ~400). Chain strategy: `feature-b
 - **L3** (2026-10-20, evidence): exploration mapped `src/lib/youtube-analytics-summary/` (adapter with `channel==MINE`, no per-video filter yet), route error mapping, `listVideosByChannel` uses playlistItems `publishedAt` (not reliable for real publish time → use `videos.list`). `feat/issue-89-scheduling-ui` (Eloy, unmerged) owns scheduling UI; this feature does not touch `dashboard-upload-form.tsx` to avoid conflicts. Pre-existing: `npm test` skips `*.test.tsx`.
 - **L4** (2026-10-20, progress): T1 committed f348f3e. Parent wrote T2 RED tests (`__tests__/slots.test.ts`, `__tests__/services.test.ts`) and delegated GREEN to a bounded worker (route: context backstop). Running slice count after T1: 350 authored lines.
 - **L5** (2026-10-20, user choice): "Rama de feature con PRs encadenados" (`feature-branch-chain`).
+- **L6** (2026-10-20, evidence): seam check after T3+T4 — `npm test` exit 0, `npx tsc --noEmit` exit 0, `npm run lint` exit 0, `best-publish-times-panel.test.tsx` 5/5, `analytics-dashboard.test.tsx` 7/7. Both writers stayed inside their declared surfaces.
+- **L7** (2026-10-20, decision): slice 3 measured ~600 lines (>400), so T3 and T4 were split into separate commits/PRs.

@@ -9,6 +9,7 @@ import { RunButton } from "@/components/run-button";
 import { ManualMode } from "@/components/manual-mode";
 import { TranscriptDashboard } from "@/components/transcript-dashboard";
 import { AnalyticsDashboard } from "@/components/analytics-dashboard";
+import { BestPublishTimesPanel } from "@/components/best-publish-times-panel";
 type Rule = {
   id: number;
   name: string;
@@ -60,6 +61,7 @@ export default function Dashboard() {
     <main className="space-y-6">
       <h1 className="text-2xl font-bold">Dashboard</h1>
       <AnalyticsDashboard />
+      <BestPublishTimesPanel />
       <TranscriptDashboard />
 
       <div className="mb-6 flex gap-1 rounded-lg bg-zinc-900 p-1">
