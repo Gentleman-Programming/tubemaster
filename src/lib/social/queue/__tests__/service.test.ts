@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -10,6 +11,7 @@ import { createSocialQueueService, type PreviewInput, type QueueErrorCode, type 
 
 const SECRET = "test-nextauth-secret-value";
 const START = Date.parse("2026-10-21T12:00:00.000Z");
+const VIDEO_SHA256 = createHash("sha256").update("video-bytes").digest("hex");
 
 async function setup(t: test.TestContext) {
   const stagingRoot = await mkdtemp(join(tmpdir(), "social-queue-"));
@@ -118,6 +120,7 @@ test("confirm succeeds once and moves the draft to scheduled", async (t) => {
 
   const confirmed = value(await service.confirm({ userId: "user-1", postId: preview.post.id, confirmationToken: preview.confirmationToken }));
   assert.equal(confirmed.status, "scheduled");
+  assert.equal(confirmed.confirmedSha256, VIDEO_SHA256, "confirm stores the hash of the bytes it verified");
   assert.equal(await statusOf(storage, preview.post.id), "scheduled");
 
   assertError(await service.confirm({ userId: "user-1", postId: preview.post.id, confirmationToken: preview.confirmationToken }), "INVALID_STATE");
@@ -159,7 +162,7 @@ test("confirm refuses posts more than five minutes overdue but allows the grace 
   assert.equal(await statusOf(storage, onTime.post.id), "scheduled");
 });
 
-test("cancel is allowed from draft, scheduled and missed only", async (t) => {
+test("cancel is allowed from draft, scheduled, missed and failed only", async (t) => {
   const { service, storage } = await setup(t);
   const ids: Record<string, string> = {};
   for (const status of ["draft", "scheduled", "missed", "publishing", "published", "failed", "cancelled"] as SocialPostStatus[]) {
@@ -168,17 +171,17 @@ test("cancel is allowed from draft, scheduled and missed only", async (t) => {
     if (status !== "draft") assert.ok(await storage.transitionPost(preview.post.id, ["draft"], status));
   }
 
-  for (const status of ["draft", "scheduled", "missed"]) {
+  for (const status of ["draft", "scheduled", "missed", "failed"]) {
     assert.equal(value(await service.cancel({ userId: "user-1", postId: ids[status] })).status, "cancelled");
   }
-  for (const status of ["publishing", "published", "failed", "cancelled"] as SocialPostStatus[]) {
+  for (const status of ["publishing", "published", "cancelled"] as SocialPostStatus[]) {
     assertError(await service.cancel({ userId: "user-1", postId: ids[status] }), "INVALID_STATE");
     assert.equal(await statusOf(storage, ids[status]), status);
   }
   assertError(await service.cancel({ userId: "user-2", postId: ids.draft }), "NOT_FOUND");
 });
 
-test("reschedule returns scheduled and missed posts to draft with a new token", async (t) => {
+test("reschedule returns scheduled, missed and failed posts to draft with a new token", async (t) => {
   const { service, storage } = await setup(t);
   const first = value(await service.preview(input()));
   value(await service.confirm({ userId: "user-1", postId: first.post.id, confirmationToken: first.confirmationToken }));
@@ -186,6 +189,7 @@ test("reschedule returns scheduled and missed posts to draft with a new token", 
 
   const rescheduled = value(await service.reschedule({ userId: "user-1", postId: first.post.id, schedule: newSchedule }));
   assert.equal(rescheduled.post.status, "draft");
+  assert.equal(rescheduled.post.confirmedSha256, undefined, "reschedule clears the confirmed hash");
   assert.equal(rescheduled.scheduledAtUtc, "2026-10-23T18:30:00.000Z");
   assert.equal(rescheduled.post.timezone, "UTC");
   assert.notEqual(rescheduled.confirmationToken, first.confirmationToken);
@@ -200,6 +204,19 @@ test("reschedule returns scheduled and missed posts to draft with a new token", 
   const fromMissed = value(await service.reschedule({ userId: "user-1", postId: missed.post.id, schedule: { mode: "now" } }));
   assert.equal(fromMissed.post.status, "draft");
   assert.equal(fromMissed.post.error, undefined);
+
+  const failed = value(await service.preview(input()));
+  value(await service.confirm({ userId: "user-1", postId: failed.post.id, confirmationToken: failed.confirmationToken }));
+  assert.ok(await storage.transitionPost(failed.post.id, ["scheduled"], "publishing"));
+  assert.ok(await storage.transitionPost(failed.post.id, ["publishing"], "failed", { error: { code: "REJECTED", message: "no" } }));
+  const fromFailed = value(await service.reschedule({ userId: "user-1", postId: failed.post.id, schedule: newSchedule }));
+  assert.equal(fromFailed.post.status, "draft");
+  assert.equal(fromFailed.post.error, undefined);
+  assert.equal(fromFailed.post.confirmedSha256, undefined);
+  assert.notEqual(fromFailed.confirmationToken, failed.confirmationToken);
+  assert.equal((await service.confirm({ userId: "user-1", postId: failed.post.id, confirmationToken: failed.confirmationToken })).ok, false);
+  value(await service.confirm({ userId: "user-1", postId: failed.post.id, confirmationToken: fromFailed.confirmationToken }));
+  assert.equal(await statusOf(storage, failed.post.id), "scheduled");
 });
 
 test("reschedule rejects invalid states, times and foreign posts", async (t) => {

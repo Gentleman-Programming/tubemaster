@@ -45,8 +45,8 @@ test("missed explains why and how to recover (S3)", () => {
 test("allowed actions follow the queue rules (S8)", () => {
   const cancellable = SOCIAL_POST_STATUSES.filter(canCancelPost);
   const reschedulable = SOCIAL_POST_STATUSES.filter(canReschedulePost);
-  assert.deepEqual(cancellable, ["draft", "scheduled", "missed"]);
-  assert.deepEqual(reschedulable, ["scheduled", "missed"]);
+  assert.deepEqual(cancellable, ["draft", "scheduled", "failed", "missed"]);
+  assert.deepEqual(reschedulable, ["scheduled", "failed", "missed"]);
 });
 
 test("maps OAuth callback error codes to user messages", () => {

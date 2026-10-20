@@ -1,4 +1,5 @@
-import { constants } from "node:fs";
+import { createHash } from "node:crypto";
+import { constants, createReadStream } from "node:fs";
 import { chmod, mkdtemp, open, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { pipeline } from "node:stream/promises";
@@ -27,6 +28,10 @@ const INTERRUPTED_ERROR: SocialPostError = {
   code: "INTERRUPTED",
   message:
     "Publishing was interrupted (the app stopped mid-upload). Check the platform to see whether the video was posted before rescheduling it.",
+};
+const STAGED_VIDEO_CHANGED_ERROR: SocialPostError = {
+  code: "STAGED_VIDEO_CHANGED",
+  message: "The video file changed after confirmation; preview and confirm again.",
 };
 const PROVIDER_ERROR: SocialPostError = {
   code: "PROVIDER_ERROR",
@@ -84,6 +89,12 @@ const realTimers: WorkerTimers = {
     clearInterval(handle as ReturnType<typeof setInterval>);
   },
 };
+
+async function sha256File(path: string): Promise<string> {
+  const hash = createHash("sha256");
+  for await (const chunk of createReadStream(path)) hash.update(chunk as Buffer);
+  return hash.digest("hex");
+}
 
 function errorName(error: unknown): string {
   return error instanceof Error ? error.name : typeof error;
@@ -171,6 +182,10 @@ export function createSocialWorker(deps: SocialWorkerDeps): SocialWorker {
     const video = await resolveStagedVideo({ stagingRoot, stagingFile: post.stagingFile });
     const snapshot = await createSnapshot(video, post.stagingFile);
     try {
+      // S4: the hashed snapshot is exactly what gets uploaded, so it must match the bytes the user confirmed.
+      if (!post.confirmedSha256 || (await sha256File(snapshot.path)) !== post.confirmedSha256) {
+        throw new PostFailure(STAGED_VIDEO_CHANGED_ERROR.code, STAGED_VIDEO_CHANGED_ERROR.message);
+      }
       const result = await publisher.publish({
         account,
         tokens,
