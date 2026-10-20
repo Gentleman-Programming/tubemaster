@@ -9,6 +9,10 @@ import type { VideoMetadataCore } from "@/lib/video-metadata";
 import { createPlaylistManagementCore, type PlaylistManagementCore } from "@/lib/playlist-management";
 import { createCliAuthService } from "@/lib/cli-auth/service";
 import type { CredentialRef } from "@/lib/video-metadata/contracts";
+import {
+  createBestPublishTimes,
+  type BestPublishTimesError,
+} from "@/lib/youtube-best-publish-times";
 
 loadEnvConfig(process.cwd());
 
@@ -32,6 +36,7 @@ export type ParsedArgs = {
     | "transcript"
     | "preview"
     | "apply"
+    | "best-times"
     | "create"
     | "update"
     | "delete"
@@ -59,7 +64,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
       ? remaining
       : [maybeCommandRaw, ...remaining].filter(Boolean);
 
-  const validMetadataCommands = ["list", "transcript", "preview", "apply"];
+  const validMetadataCommands = ["list", "transcript", "preview", "apply", "best-times"];
   const validAuthCommands = ["login", "whoami", "list-channels", "select-channel", "list-users", "select-user", "logout", "revoke"];
   const validPlaylistCommands = ["list", "create", "update", "delete", "add", "remove"];
   const validCommands = isAuthNamespace
@@ -75,7 +80,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
         ? "Auth command must be one of: login, whoami, list-channels, select-channel, list-users, select-user, logout, revoke"
         : isPlaylistNamespace
           ? "Playlist command must be one of: list, create, update, delete, add, remove"
-          : "Command must be one of: list, transcript, preview, apply",
+          : "Command must be one of: list, transcript, preview, apply, best-times",
     });
   }
 
@@ -179,6 +184,17 @@ function serializeEvent(event: string, data: unknown) {
   return JSON.stringify({ ok: true, event, data });
 }
 
+function serializeBestPublishTimesError(error: BestPublishTimesError) {
+  return JSON.stringify({
+    ok: false,
+    error: {
+      code: error.code,
+      message: error.message,
+      details: error.requiredScopes ? { requiredScopes: error.requiredScopes } : undefined,
+    },
+  });
+}
+
 function serializeError(error: unknown) {
   if (error instanceof DomainError) {
     return JSON.stringify({
@@ -211,7 +227,8 @@ export async function runCliCommand(args: {
     | "deletePlaylist"
     | "addVideosToPlaylist"
     | "removeVideosFromPlaylist"
-  >;
+  > &
+    Partial<Pick<ReturnType<typeof createBestPublishTimes>, "fetchBestPublishTimes">>;
   auth?: CliAuthAdapter;
   writeStdout?: (line: string) => void;
   writeStderr?: (line: string) => void;
@@ -219,6 +236,7 @@ export async function runCliCommand(args: {
   const core = args.core ?? {
     ...createVideoMetadataCore(),
     ...createPlaylistManagementCore(),
+    ...createBestPublishTimes(),
   };
   const auth = args.auth ?? createCliAuthService();
   const writeStdout =
@@ -410,6 +428,23 @@ export async function runCliCommand(args: {
         videoId: requiredStringFlag(parsedArgs.flags, "videoId"),
         ...(parsedArgs.flags.provider !== undefined ? { provider: requiredStringFlag(parsedArgs.flags, "provider") } : {}),
       });
+
+      writeStdout(serializeSuccess(result));
+      return 0;
+    }
+
+    if (parsedArgs.command === "best-times") {
+      const fetchBestPublishTimes =
+        core.fetchBestPublishTimes ?? createBestPublishTimes().fetchBestPublishTimes;
+      const result = await fetchBestPublishTimes({
+        credentialRef,
+        timezone: requiredStringFlag(parsedArgs.flags, "timezone"),
+      });
+
+      if (result.kind === "best-publish-times-error") {
+        writeStderr(serializeBestPublishTimesError(result));
+        return 1;
+      }
 
       writeStdout(serializeSuccess(result));
       return 0;

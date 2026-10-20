@@ -18,6 +18,10 @@ import {
   playlistListInputSchema,
   playlistRemoveVideosInputSchema,
 } from "@/lib/playlist-management/schemas";
+import {
+  createBestPublishTimes,
+  type BestPublishTimesError,
+} from "@/lib/youtube-best-publish-times";
 
 loadEnvConfig(process.cwd());
 
@@ -35,6 +39,12 @@ type PlaylistManagementCoreSubset = Pick<
   | "addVideosToPlaylist"
   | "removeVideosFromPlaylist"
 >;
+
+type BestPublishTimesCoreSubset = Partial<
+  Pick<ReturnType<typeof createBestPublishTimes>, "fetchBestPublishTimes">
+>;
+
+type McpCore = VideoMetadataCoreSubset & PlaylistManagementCoreSubset & BestPublishTimesCoreSubset;
 
 type ToolResponse = {
   content: Array<{ type: "text"; text: string }>;
@@ -71,6 +81,25 @@ function toolErrorResult(error: unknown) {
           error: {
             code: "internal_error",
             message: error instanceof Error ? error.message : "Unknown error",
+          },
+        }),
+      },
+    ],
+    isError: true,
+  };
+}
+
+function bestPublishTimesErrorResult(error: BestPublishTimesError): ToolResponse {
+  return {
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({
+          ok: false,
+          error: {
+            code: error.code,
+            message: error.message,
+            details: error.requiredScopes ? { requiredScopes: error.requiredScopes } : undefined,
           },
         }),
       },
@@ -146,6 +175,13 @@ export const applyInputSchema = z
   })
   .strict();
 
+export const bestPublishTimesInputSchema = z
+  .object({
+    credentialRef: credentialSchema.optional(),
+    timezone: z.string().min(1),
+  })
+  .strict();
+
 export const writeChannelListInputSchema = z
   .object({
     credentialRef: credentialSchema.optional(),
@@ -187,7 +223,7 @@ const playlistUpdateToolInputSchema = z
   );
 
 export function createMcpToolHandlers(
-  core: VideoMetadataCoreSubset & PlaylistManagementCoreSubset,
+  core: McpCore,
   auth: {
     resolveEffectiveCredentialRef: CliAuthService["resolveEffectiveCredentialRef"];
     whoami: () => Promise<unknown>;
@@ -346,6 +382,29 @@ export function createMcpToolHandlers(
       }
     },
 
+    async bestPublishTimes(input: unknown): Promise<ToolResponse> {
+      const parsedInput = bestPublishTimesInputSchema.safeParse(input);
+      if (!parsedInput.success) {
+        return mapValidationErrorResult(parsedInput.error);
+      }
+
+      try {
+        const credentialRef = await resolveCredentialRef(parsedInput.data.credentialRef);
+        const fetchBestPublishTimes =
+          core.fetchBestPublishTimes ?? createBestPublishTimes().fetchBestPublishTimes;
+        const result = await fetchBestPublishTimes({
+          credentialRef,
+          timezone: parsedInput.data.timezone,
+        });
+        if (result.kind === "best-publish-times-error") {
+          return bestPublishTimesErrorResult(result);
+        }
+        return toolSuccessResult(result);
+      } catch (error) {
+        return toolErrorResult(error);
+      }
+    },
+
     async playlistList(input: unknown): Promise<ToolResponse> {
       const parsedInput = playlistListInputSchema
         .partial({ credentialRef: true })
@@ -464,9 +523,10 @@ export function createMcpToolHandlers(
 }
 
 export function createMcpServer(
-  core: VideoMetadataCoreSubset & PlaylistManagementCoreSubset = {
+  core: McpCore = {
     ...createVideoMetadataCore(),
     ...createPlaylistManagementCore(),
+    ...createBestPublishTimes(),
   }
 ) {
   const server = new McpServer({
@@ -564,6 +624,16 @@ export function createMcpServer(
       inputSchema: applyInputSchema,
     },
     (args) => handlers.apply(args)
+  );
+
+  server.registerTool(
+    "best_publish_times",
+    {
+      description:
+        "Read-only estimate of the best weekday/hour slots to publish, derived from the channel's own past uploads and their early views (not live audience data). Never publishes, uploads or schedules anything. timezone (IANA, e.g. America/Argentina/Buenos_Aires) is REQUIRED. Requires the yt-analytics.readonly scope. credentialRef is OPTIONAL and falls back to active local auth context.",
+      inputSchema: bestPublishTimesInputSchema,
+    },
+    (args) => handlers.bestPublishTimes(args)
   );
 
   server.registerTool(

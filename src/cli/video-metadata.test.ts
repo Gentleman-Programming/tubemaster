@@ -1667,3 +1667,160 @@ test("CLI playlist fails with typed auth error when no credential source is avai
   assert.equal(envelope.error.code, "AUTH_USER_NOT_FOUND");
   assert.match(envelope.error.message, /Active auth user does not exist/);
 });
+
+const bestPublishTimesResult = {
+  kind: "best-publish-times" as const,
+  timezone: "Europe/Madrid",
+  analyzedVideos: 12,
+  excludedVideos: 1,
+  channelMedianEarlyViews: 1000,
+  confidence: "normal" as const,
+  slots: [
+    {
+      weekday: "tuesday" as const,
+      startHour: 18,
+      endHour: 21,
+      score: 1.4,
+      sampleSize: 3,
+      medianEarlyViews: 1400,
+    },
+  ],
+  method: {
+    maxVideos: 50,
+    minVideoAgeDays: 4,
+    earlyWindowDays: 3,
+    slotHours: 3,
+    minSlotSamples: 2,
+  },
+};
+
+test("CLI best-times forwards timezone and resolved credentialRef and prints the core result", async () => {
+  const calls: unknown[] = [];
+  const core = {
+    ...makeCoreStub(),
+    fetchBestPublishTimes: async (input: { credentialRef: unknown; timezone: string }) => {
+      calls.push(input);
+      return bestPublishTimesResult;
+    },
+  };
+  const stdout: string[] = [];
+  const stderr: string[] = [];
+
+  const fallbackExit = await runCliCommand({
+    argv: ["best-times", "--timezone", "Europe/Madrid"],
+    core,
+    auth: makeAuthStub(),
+    writeStdout: (line) => stdout.push(line),
+    writeStderr: (line) => stderr.push(line),
+  });
+  const explicitExit = await runCliCommand({
+    argv: ["best-times", "--timezone", "UTC", "--userId", "user-1"],
+    core,
+    auth: makeAuthStub(),
+    writeStdout: (line) => stdout.push(line),
+    writeStderr: (line) => stderr.push(line),
+  });
+
+  assert.equal(fallbackExit, 0);
+  assert.equal(explicitExit, 0);
+  assert.equal(stderr.length, 0);
+  assert.deepEqual(calls, [
+    { credentialRef: { userId: "active-user" }, timezone: "Europe/Madrid" },
+    { credentialRef: { userId: "user-1" }, timezone: "UTC" },
+  ]);
+  assert.deepEqual(JSON.parse(stdout[0] ?? "{}"), { ok: true, data: bestPublishTimesResult });
+});
+
+test("CLI best-times rejects missing or empty --timezone without calling the core", async () => {
+  let called = false;
+  const core = {
+    ...makeCoreStub(),
+    fetchBestPublishTimes: async () => {
+      called = true;
+      return bestPublishTimesResult;
+    },
+  };
+
+  for (const argv of [["best-times"], ["best-times", "--timezone", ""], ["best-times", "--timezone"]]) {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    const exitCode = await runCliCommand({
+      argv,
+      core,
+      auth: makeAuthStub(),
+      writeStdout: (line) => stdout.push(line),
+      writeStderr: (line) => stderr.push(line),
+    });
+
+    assert.equal(exitCode, 1);
+    assert.equal(stdout.length, 0);
+    const envelope = JSON.parse(stderr[0] ?? "{}");
+    assert.equal(envelope.error.code, "validation_failed");
+    assert.match(envelope.error.message, /Missing required --timezone/);
+  }
+  assert.equal(called, false);
+});
+
+test("CLI best-times surfaces core errors in the error envelope with non-zero exit", async () => {
+  const core = {
+    ...makeCoreStub(),
+    fetchBestPublishTimes: async () => ({
+      kind: "best-publish-times-error" as const,
+      code: "INVALID_INPUT" as const,
+      message: "timezone must be a valid IANA timezone",
+    }),
+  };
+  const stdout: string[] = [];
+  const stderr: string[] = [];
+
+  const exitCode = await runCliCommand({
+    argv: ["best-times", "--timezone", "Not/AZone"],
+    core,
+    auth: makeAuthStub(),
+    writeStdout: (line) => stdout.push(line),
+    writeStderr: (line) => stderr.push(line),
+  });
+
+  assert.equal(exitCode, 1);
+  assert.equal(stdout.length, 0);
+  assert.deepEqual(JSON.parse(stderr[0] ?? "{}"), {
+    ok: false,
+    error: { code: "INVALID_INPUT", message: "timezone must be a valid IANA timezone" },
+  });
+});
+
+test("CLI keeps existing commands working and lists best-times among valid commands", async () => {
+  let listInput: unknown;
+  const core = makeCoreStub();
+  core.listVideos = async (input: unknown) => {
+    listInput = input;
+    return { videos: [] };
+  };
+
+  const listExit = await runCliCommand({ argv: ["list", "--maxResults", "3"], core, auth: makeAuthStub() });
+  assert.equal(listExit, 0);
+  assert.deepEqual(listInput, { credentialRef: { userId: "active-user" }, maxResults: 3 });
+
+  const stdout: string[] = [];
+  const whoamiExit = await runCliCommand({
+    argv: ["auth", "whoami"],
+    core,
+    auth: makeAuthStub(),
+    writeStdout: (line) => stdout.push(line),
+  });
+  assert.equal(whoamiExit, 0);
+  assert.equal(JSON.parse(stdout[0] ?? "{}").ok, true);
+
+  const stderr: string[] = [];
+  const invalidExit = await runCliCommand({
+    argv: ["nope"],
+    core,
+    auth: makeAuthStub(),
+    writeStderr: (line) => stderr.push(line),
+  });
+  assert.equal(invalidExit, 1);
+  assert.equal(
+    JSON.parse(stderr[0] ?? "{}").error.message,
+    "Command must be one of: list, transcript, preview, apply, best-times",
+  );
+});

@@ -80,6 +80,7 @@ npm run cli:video-metadata -- list [--channelId <CHANNEL_ID>] [--maxResults 25] 
 npm run cli:video-metadata -- transcript --videoId <VIDEO_ID> [--userId <USER_ID>]
 npm run cli:video-metadata -- preview --videoId <VIDEO_ID> --editorialPrompt "..." [--userId <USER_ID>]
 npm run cli:video-metadata -- apply --videoId <VIDEO_ID> --finalTitle "..." --description "..." --expectedChannelId <UC...> [--dryRun] [--userId <USER_ID>]
+npm run cli:video-metadata -- best-times --timezone <IANA> [--userId <USER_ID>]  # read-only estimate; needs yt-analytics.readonly
 ```
 
 ### Playlist commands
@@ -115,6 +116,8 @@ Key MCP tools:
   - `auth_user_select`
 - Metadata tools:
   - `list`, `transcript`, `preview`, `apply`
+- Best publish times tool:
+  - `best_publish_times` — read-only estimate from the channel's own past uploads; `timezone` (IANA) required; needs `yt-analytics.readonly`; never publishes or schedules
 - Playlist tools:
   - `playlist_list`, `playlist_create`, `playlist_update`, `playlist_delete`
   - `playlist_add_videos`, `playlist_remove_videos`
