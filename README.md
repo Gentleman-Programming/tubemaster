@@ -28,10 +28,10 @@ Full walkthrough: **[docs/getting-started.md](docs/getting-started.md)**. The de
 
 | Interface | Entry point | Current scope |
 | --- | --- | --- |
-| Web UI | `http://localhost:3102` | Browse/select/export videos, playlist actions, rules, estimated quota usage |
+| Web UI | `http://localhost:3102` | Browse/select/export videos, playlist actions, rules, estimated quota usage, read-only best publish times panel |
 | CLI | `npm run cli:video-metadata -- <command>` | Auth/channel context, metadata and transcript workflows, playlists; quota has a separate command |
 | MCP Server (stdio) | `npm run mcp:video-metadata` | Context, metadata, transcripts, playlists; no login or registered quota tool |
-| API Route Handlers | `/api/youtube/videos`, `/api/video-metadata/*` | Session-authenticated UI operations, metadata/transcripts, estimated quota usage |
+| API Route Handlers | `/api/youtube/videos`, `/api/video-metadata/*`, `/api/youtube/best-publish-times` | Session-authenticated UI operations, metadata/transcripts, estimated quota usage |
 
 Detailed usage by interface: **[docs/interfaces.md](docs/interfaces.md)**
 
