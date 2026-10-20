@@ -16,7 +16,10 @@ export async function loadPublishers(
     publishers.tiktok = createTikTokPublisherFromEnv(env);
   }
 
-  // INSTAGRAM_PUBLISHER_SLOT: wire the Instagram publisher here once src/lib/social/platforms/instagram lands (T6).
+  if (env.INSTAGRAM_APP_ID && env.INSTAGRAM_APP_SECRET) {
+    const { createInstagramPublisherFromEnv } = await import("../platforms/instagram");
+    publishers.instagram = createInstagramPublisherFromEnv(env);
+  }
 
   return publishers;
 }

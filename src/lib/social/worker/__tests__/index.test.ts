@@ -102,3 +102,10 @@ test("loadPublishers only enables platforms with configured credentials", async 
   assert.deepEqual(Object.keys(publishers), ["tiktok"]);
   assert.equal(publishers.tiktok?.platform, "tiktok");
 });
+
+test("loadPublishers enables Instagram only when its app credentials are configured", async () => {
+  assert.deepEqual(Object.keys(await loadPublishers({ INSTAGRAM_APP_ID: "id" })), []);
+  const publishers = await loadPublishers({ INSTAGRAM_APP_ID: "id", INSTAGRAM_APP_SECRET: "secret" });
+  assert.deepEqual(Object.keys(publishers), ["instagram"]);
+  assert.equal(publishers.instagram?.platform, "instagram");
+});
