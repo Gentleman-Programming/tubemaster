@@ -9,6 +9,7 @@ export function DashboardSidebar() {
     { href: "/dashboard", label: "Dashboard" },
     { href: "/dashboard/upload", label: "Private upload" },
     { href: "/dashboard/quota", label: "Quota usage" },
+    { href: "/dashboard/social", label: "Social publishing" },
   ];
 
   return (
