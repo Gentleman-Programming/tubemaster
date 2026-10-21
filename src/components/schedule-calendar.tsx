@@ -31,10 +31,17 @@ import {
   type WeekView,
 } from "@/lib/schedule-calendar";
 import type { ScheduledYoutubeVideo } from "@/lib/youtube-schedule-calendar/contracts";
-import { Badge, Button, buttonClasses, EmptyState, Input } from "@/components/ui";
+import { Badge, Button, buttonClasses, DateTimePicker, EmptyState, useBestPublishSlots } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { cancelSocialPost, requestSocialPosts, rescheduleSocialPost } from "./social-queue";
-import { browserTimezone, confirmSocialPost, SocialPostPreviewCard, type SocialPostPreview } from "./social-composer";
+import {
+  browserTimezone,
+  confirmSocialPost,
+  scheduleFields,
+  schedulePickerValue,
+  SocialPostPreviewCard,
+  type SocialPostPreview,
+} from "./social-composer";
 
 export type CalendarData = { posts: SocialPost[]; videos: ScheduledYoutubeVideo[]; notice: string | null };
 export type CalendarLoadState = { kind: "loading" } | { kind: "error"; message: string } | { kind: "ready"; data: CalendarData };
@@ -347,6 +354,7 @@ export function ScheduleCalendar({ fetcher = defaultFetcher }: { fetcher?: Socia
   const [reschedule, setReschedule] = useState<RescheduleState | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const bestSlots = useBestPublishSlots(reschedule?.timezone || null, !!reschedule && !reschedule.preview, fetcher);
 
   useEffect(() => {
     setClock({ timezone: browserTimezone(), now: new Date() });
@@ -439,11 +447,16 @@ export function ScheduleCalendar({ fetcher = defaultFetcher }: { fetcher?: Socia
     return (
       <form noValidate className="space-y-3 rounded-panel border border-line bg-glass p-3" onSubmit={(event) => { event.preventDefault(); void previewReschedule(post, reschedule); }}>
         <p className="text-xs text-subtle">Rescheduling returns the post to draft until you confirm the new time.</p>
-        <div className="grid gap-2 sm:grid-cols-3">
-          <Input type="date" aria-label="New publish date" value={reschedule.date} onChange={(event) => setReschedule({ ...reschedule, date: event.target.value })} disabled={busy} className="font-mono" />
-          <Input type="time" aria-label="New publish time" value={reschedule.time} onChange={(event) => setReschedule({ ...reschedule, time: event.target.value })} disabled={busy} className="font-mono" />
-          <Input type="text" aria-label="IANA timezone" value={reschedule.timezone} onChange={(event) => setReschedule({ ...reschedule, timezone: event.target.value })} disabled={busy} className="font-mono" />
-        </div>
+        <DateTimePicker
+          label="New publish date"
+          timeLabel="New publish time"
+          value={schedulePickerValue(reschedule.date, reschedule.time, reschedule.timezone)}
+          timezone={reschedule.timezone || undefined}
+          onTimezoneChange={(timezone) => setReschedule({ ...reschedule, timezone })}
+          onChange={(value) => setReschedule({ ...reschedule, ...scheduleFields(value) })}
+          bestSlots={bestSlots}
+          disabled={busy}
+        />
         <div className="flex flex-wrap gap-2">
           <Button type="submit" size="sm" disabled={busy}>Preview new time</Button>
           <Button variant="ghost" size="sm" disabled={busy} onClick={() => setReschedule(null)}>Close</Button>
