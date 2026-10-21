@@ -8,17 +8,21 @@ import {
   canReschedulePost,
   formatScheduledLocal,
   formatScheduledUtc,
+  platformChip,
   platformLabel,
   postStatusBadge,
   toLocalDateTime,
   type SocialApiResult,
   type SocialFetcher,
 } from "@/lib/social/presentation";
+import { validateLocalDateTime } from "@/lib/datetime-picker";
+import { Badge, Button, Card, DateTimePicker, EmptyState, SectionHeader, useBestPublishSlots, type DateTimePickerProps } from "@/components/ui";
+import { cn } from "@/lib/cn";
 import {
   browserTimezone,
   confirmSocialPost,
-  inputClass,
-  secondaryButtonClass,
+  scheduleFields,
+  schedulePickerValue,
   SocialPostPreviewCard,
   type SocialPostPreview,
   type SocialSchedule,
@@ -68,35 +72,42 @@ export function SocialQueueContent({
   /** Inline reschedule editor for the post being rescheduled, if any. */
   renderReschedule?: (post: SocialPost) => ReactNode;
 }) {
-  if (loading) return <p role="status" className="text-sm text-zinc-400">Loading posts...</p>;
-  if (view?.kind === "error") return <p role="alert" className="text-sm text-red-300">{view.message}</p>;
+  if (loading) return <p role="status" className="font-mono text-sm text-subtle">Loading posts...</p>;
+  if (view?.kind === "error") return <p role="alert" className="text-sm text-danger">{view.message}</p>;
   const posts = view?.posts ?? [];
-  if (!posts.length) return <p className="text-sm text-zinc-400">No posts yet. Previewed and scheduled posts appear here.</p>;
+  if (!posts.length) return <EmptyState title="No posts yet. Previewed and scheduled posts appear here." />;
   return (
     <ul className="space-y-3">
       {posts.map((post) => {
         const badge = postStatusBadge(post.status);
         const busy = busyPostId === post.id;
+        const chip = platformChip(post.platform);
         return (
-          <li key={post.id} className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-900 p-4 text-sm">
+          <li
+            key={post.id}
+            className="space-y-3 rounded-panel border border-line bg-surface p-4 text-sm transition-colors hover:border-rose/30"
+          >
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${badge.className}`}>{badge.label}</span>
-              <span className="font-medium text-white">{platformLabel(post.platform)}</span>
-              <span className="text-zinc-400">{formatScheduledLocal(post.scheduledAtUtc, post.timezone)}</span>
-              <time dateTime={post.scheduledAtUtc} className="text-xs text-zinc-500">{formatScheduledUtc(post.scheduledAtUtc)}</time>
+              <Badge tone={badge.tone} className={badge.modifier}>{badge.label}</Badge>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-glass-2 px-2 py-0.5 text-xs font-medium text-fg">
+                <span aria-hidden="true" className={cn("size-1.5 rounded-full", chip.dotClassName)} />
+                {chip.label}
+              </span>
+              <span className="font-mono text-xs text-dim">{formatScheduledLocal(post.scheduledAtUtc, post.timezone)}</span>
+              <time dateTime={post.scheduledAtUtc} className="font-mono text-xs text-muted">{formatScheduledUtc(post.scheduledAtUtc)}</time>
             </div>
-            <p className="line-clamp-2 whitespace-pre-wrap break-words text-zinc-300">{post.caption}</p>
-            <p className="text-xs text-zinc-500">{badge.description}</p>
+            <p className="line-clamp-2 whitespace-pre-wrap break-words text-fg">{post.caption}</p>
+            <p className="text-xs text-subtle">{badge.description}</p>
             {post.error && (post.status === "failed" || post.status === "missed") && (
-              <p className="text-sm text-red-300">{post.error.message}</p>
+              <p className="rounded-control border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{post.error.message}</p>
             )}
             {(canCancelPost(post.status) || canReschedulePost(post.status)) && (
               <div className="flex flex-wrap gap-2">
                 {canReschedulePost(post.status) && (
-                  <button type="button" disabled={busy} onClick={() => onReschedule?.(post)} className={secondaryButtonClass}>Reschedule</button>
+                  <Button variant="secondary" size="sm" disabled={busy} onClick={() => onReschedule?.(post)}>Reschedule</Button>
                 )}
                 {canCancelPost(post.status) && (
-                  <button type="button" disabled={busy} onClick={() => onCancel?.(post)} className={secondaryButtonClass}>Cancel</button>
+                  <Button variant="ghost" size="sm" disabled={busy} onClick={() => onCancel?.(post)}>Cancel</Button>
                 )}
               </div>
             )}
@@ -108,13 +119,54 @@ export function SocialQueueContent({
   );
 }
 
-type RescheduleState = {
+export type RescheduleState = {
   post: SocialPost;
   date: string;
   time: string;
   timezone: string;
   preview: SocialPostPreview | null;
 };
+
+/** Inline form to pick a new time; previewing it returns the post to draft until confirmed. */
+export function RescheduleEditor({
+  state,
+  busy,
+  bestSlots,
+  onChange,
+  onSubmit,
+  onClose,
+}: {
+  state: RescheduleState;
+  busy: boolean;
+  bestSlots?: DateTimePickerProps["bestSlots"];
+  onChange: (state: RescheduleState) => void;
+  onSubmit: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <form
+      noValidate
+      className="space-y-3 rounded-panel border border-line bg-glass p-3"
+      onSubmit={(event) => { event.preventDefault(); onSubmit(); }}
+    >
+      <p className="text-xs text-subtle">Rescheduling returns the post to draft until you confirm the new time.</p>
+      <DateTimePicker
+        label="New publish date"
+        timeLabel="New publish time"
+        value={schedulePickerValue(state.date, state.time, state.timezone)}
+        timezone={state.timezone || undefined}
+        onTimezoneChange={(timezone) => onChange({ ...state, timezone })}
+        onChange={(value) => onChange({ ...state, ...scheduleFields(value) })}
+        bestSlots={bestSlots}
+        disabled={busy}
+      />
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" size="sm" disabled={busy}>Preview new time</Button>
+        <Button variant="ghost" size="sm" disabled={busy} onClick={onClose}>Close</Button>
+      </div>
+    </form>
+  );
+}
 
 export function SocialQueue({ fetcher = defaultFetcher, refreshKey = 0 }: { fetcher?: SocialFetcher; refreshKey?: number } = {}) {
   const [view, setView] = useState<SocialQueueView | null>(null);
@@ -123,6 +175,7 @@ export function SocialQueue({ fetcher = defaultFetcher, refreshKey = 0 }: { fetc
   const [message, setMessage] = useState("");
   const [reschedule, setReschedule] = useState<RescheduleState | null>(null);
   const [localTimezone, setLocalTimezone] = useState("UTC");
+  const bestSlots = useBestPublishSlots(reschedule?.timezone || null, !!reschedule && !reschedule.preview, fetcher);
 
   async function refresh() {
     setLoading(true);
@@ -160,6 +213,11 @@ export function SocialQueue({ fetcher = defaultFetcher, refreshKey = 0 }: { fetc
     const localDateTime = toLocalDateTime(state.date, state.time);
     if (!localDateTime) {
       setMessage("Enter a valid date and time.");
+      return;
+    }
+    const check = validateLocalDateTime(localDateTime, state.timezone);
+    if (!check.ok) {
+      setMessage(check.message);
       return;
     }
     setBusyPostId(state.post.id);
@@ -203,34 +261,24 @@ export function SocialQueue({ fetcher = defaultFetcher, refreshKey = 0 }: { fetc
       );
     }
     return (
-      <form
-        noValidate
-        className="space-y-2 rounded-lg border border-zinc-700 p-3"
-        onSubmit={(event) => { event.preventDefault(); void previewReschedule(reschedule); }}
-      >
-        <p className="text-xs text-zinc-400">Rescheduling returns the post to draft until you confirm the new time.</p>
-        <div className="grid gap-2 sm:grid-cols-3">
-          <input type="date" aria-label="New publish date" value={reschedule.date} onChange={(event) => setReschedule({ ...reschedule, date: event.target.value })} disabled={busy} className={inputClass} />
-          <input type="time" aria-label="New publish time" value={reschedule.time} onChange={(event) => setReschedule({ ...reschedule, time: event.target.value })} disabled={busy} className={inputClass} />
-          <input type="text" aria-label="IANA timezone" value={reschedule.timezone} onChange={(event) => setReschedule({ ...reschedule, timezone: event.target.value })} disabled={busy} className={inputClass} />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button type="submit" disabled={busy} className={secondaryButtonClass}>Preview new time</button>
-          <button type="button" disabled={busy} onClick={() => setReschedule(null)} className={secondaryButtonClass}>Close</button>
-        </div>
-      </form>
+      <RescheduleEditor
+        state={reschedule}
+        busy={busy}
+        bestSlots={bestSlots}
+        onChange={setReschedule}
+        onSubmit={() => void previewReschedule(reschedule)}
+        onClose={() => setReschedule(null)}
+      />
     );
   }
 
   return (
-    <section aria-labelledby="social-queue-heading" className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 id="social-queue-heading" className="text-xl font-semibold">Post queue</h2>
-          <p className="mt-1 text-sm text-zinc-400">Scheduled posts are published only while the app is running.</p>
-        </div>
-        <button type="button" disabled={loading} onClick={() => void refresh()} className={secondaryButtonClass}>Refresh</button>
-      </div>
+    <Card aria-labelledby="social-queue-heading" className="space-y-4">
+      <SectionHeader
+        title={<span id="social-queue-heading">Post queue</span>}
+        description="Scheduled posts are published only while the app is running."
+        actions={<Button variant="secondary" size="sm" disabled={loading} onClick={() => void refresh()}>Refresh</Button>}
+      />
       <SocialQueueContent
         view={view}
         loading={loading && !view}
@@ -239,7 +287,7 @@ export function SocialQueue({ fetcher = defaultFetcher, refreshKey = 0 }: { fetc
         onReschedule={(post) => setReschedule({ post, date: "", time: "", timezone: post.timezone === "UTC" ? localTimezone : post.timezone, preview: null })}
         renderReschedule={renderReschedule}
       />
-      <p role="status" aria-live="polite" className="text-sm text-zinc-300">{message}</p>
-    </section>
+      <p role="status" aria-live="polite" className="text-sm text-dim">{message}</p>
+    </Card>
   );
 }

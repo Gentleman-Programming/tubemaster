@@ -6,9 +6,12 @@ import {
   callSocialApi,
   connectBannerMessage,
   connectErrorMessage,
+  platformChip,
   platformLabel,
   type SocialFetcher,
 } from "@/lib/social/presentation";
+import { Button, buttonClasses, Card, SectionHeader } from "@/components/ui";
+import { cn } from "@/lib/cn";
 
 export type SocialAccountsView = { kind: "result"; accounts: SocialAccount[] } | { kind: "error"; message: string };
 
@@ -27,9 +30,6 @@ export async function disconnectSocialAccount(
   const result = await callSocialApi(fetcher, `/api/social/accounts?platform=${platform}`, { method: "DELETE" });
   return result.ok ? { ok: true } : { ok: false, message: result.message };
 }
-
-const buttonClass =
-  "rounded-lg border border-zinc-600 px-3 py-1.5 text-sm font-medium hover:bg-zinc-800 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
 
 export function SocialAccountsContent({
   view,
@@ -53,42 +53,51 @@ export function SocialAccountsContent({
   return (
     <>
       {banner && (
-        <p role="status" className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-200">
+        <p role="status" className="rounded-panel border border-mint/30 bg-mint/10 p-3 text-sm text-mint">
           {banner}
         </p>
       )}
       {error && (
-        <p role="alert" className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">
+        <p role="alert" className="rounded-panel border border-danger/30 bg-danger/10 p-3 text-sm text-danger">
           {connectErrorMessage(error)}
         </p>
       )}
-      {loading && <p role="status" className="text-sm text-zinc-400">Loading connected accounts...</p>}
-      {!loading && view?.kind === "error" && <p role="alert" className="text-sm text-red-300">{view.message}</p>}
+      {loading && <p role="status" className="font-mono text-sm text-subtle">Loading connected accounts...</p>}
+      {!loading && view?.kind === "error" && <p role="alert" className="text-sm text-danger">{view.message}</p>}
       {!loading && view?.kind === "result" && (
         <ul className="grid gap-3 sm:grid-cols-2">
           {SOCIAL_PLATFORMS.map((platform) => {
             const account = accounts.find((item) => item.platform === platform);
-            const label = platformLabel(platform);
+            const chip = platformChip(platform);
+            const label = chip.label;
             return (
-              <li key={platform} className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-900 p-4">
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-zinc-500">{label}</p>
-                  <p className="mt-1 font-semibold text-white">{account ? account.displayName : "Not connected"}</p>
+              <li
+                key={platform}
+                className="flex flex-col gap-4 rounded-panel border border-line bg-surface p-4 transition-colors hover:border-rose/30"
+              >
+                <div className="min-w-0">
+                  <p className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-subtle">
+                    <span aria-hidden="true" className={cn("size-2 rounded-full", chip.dotClassName, !account && "opacity-40")} />
+                    {label}
+                  </p>
+                  <p className={cn("mt-1 truncate font-semibold", account ? "text-fg" : "text-muted")}>
+                    {account ? account.displayName : "Not connected"}
+                  </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {/* Full-page navigation: the connect route redirects to the platform's OAuth screen. */}
-                  <a href={`/api/social/${platform}/connect`} className={buttonClass}>
+                  <a href={`/api/social/${platform}/connect`} className={buttonClasses(account ? "secondary" : "primary", "sm")}>
                     {account ? `Reconnect ${label}` : `Connect ${label}`}
                   </a>
                   {account && (
-                    <button
-                      type="button"
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       disabled={busyPlatform === platform}
                       onClick={() => onDisconnect?.(platform)}
-                      className={buttonClass}
                     >
                       Disconnect
-                    </button>
+                    </Button>
                   )}
                 </div>
               </li>
@@ -96,7 +105,7 @@ export function SocialAccountsContent({
           })}
         </ul>
       )}
-      {actionMessage && <p role="status" aria-live="polite" className="text-sm text-zinc-300">{actionMessage}</p>}
+      {actionMessage && <p role="status" aria-live="polite" className="text-sm text-dim">{actionMessage}</p>}
     </>
   );
 }
@@ -143,11 +152,11 @@ export function SocialAccountsPanel({
   }
 
   return (
-    <section aria-labelledby="social-accounts-heading" className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-5">
-      <div>
-        <h2 id="social-accounts-heading" className="text-xl font-semibold">Connected accounts</h2>
-        <p className="mt-1 text-sm text-zinc-400">Connect one TikTok and one Instagram account with your own developer apps.</p>
-      </div>
+    <Card aria-labelledby="social-accounts-heading" className="space-y-4">
+      <SectionHeader
+        title={<span id="social-accounts-heading">Connected accounts</span>}
+        description="Connect one TikTok and one Instagram account with your own developer apps."
+      />
       <SocialAccountsContent
         view={view}
         loading={!view}
@@ -157,6 +166,6 @@ export function SocialAccountsPanel({
         actionMessage={actionMessage}
         onDisconnect={(platform) => void disconnect(platform)}
       />
-    </section>
+    </Card>
   );
 }

@@ -11,6 +11,7 @@ import {
   formatBytes,
   formatScheduledLocal,
   formatScheduledUtc,
+  platformChip,
   platformLabel,
   postStatusBadge,
   queueErrorMessage,
@@ -34,6 +35,31 @@ test("every post status has a label, description and tone", () => {
   }
   assert.equal(postStatusBadge("published").label, "Published");
   assert.equal(postStatusBadge("missed").label, "Missed");
+});
+
+test("post status tones follow the theme tokens", () => {
+  const tones = Object.fromEntries(SOCIAL_POST_STATUSES.map((status) => [status, postStatusBadge(status).tone]));
+  assert.deepEqual(tones, {
+    draft: "neutral",
+    scheduled: "sky",
+    publishing: "rose",
+    published: "mint",
+    failed: "danger",
+    missed: "peach",
+    cancelled: "neutral",
+  });
+  assert.match(postStatusBadge("publishing").modifier, /animate-pulse/);
+  assert.match(postStatusBadge("cancelled").modifier, /opacity/);
+  for (const status of SOCIAL_POST_STATUSES) {
+    // Theme tokens only: no stock Tailwind palette classes.
+    assert.doesNotMatch(postStatusBadge(status).className, /zinc|sky-|indigo|emerald|red-|amber/, status);
+  }
+});
+
+test("platform chips label and color each platform", () => {
+  assert.equal(platformChip("tiktok").label, "TikTok");
+  assert.equal(platformChip("instagram").label, "Instagram");
+  assert.notEqual(platformChip("tiktok").dotClassName, platformChip("instagram").dotClassName);
 });
 
 test("missed explains why and how to recover (S3)", () => {

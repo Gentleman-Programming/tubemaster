@@ -1,0 +1,31 @@
+# UI redesign (gentlemanprogramming.com style) + scheduling UX
+
+Objective: restyle the whole TubeMaster interface with the gentlemanprogramming.com design language and add UX improvements, starting with a calendar to pick when to post and to see every scheduled item. Branch/tracker: `feature/ui-redesign` (from `feature-2`). Delivery: `feature-branch-chain` (cached). Test runner: `node --import tsx --test <file>`; `npm test` collects `*.test.ts` only (run `*.test.tsx` directly).
+
+## Specs
+
+- **S1** — User request (verbatim): "puedes ver la app de tubemaster y mejorar toda la interfaz siguiendo el diseño de gentlemanprogramming.com ademas" + "de mejoras a nivel ux? por ejemplo un calendar para elegir cuando postear" + "y ver todas las planificaciones".
+- **S2** — Design tokens extracted from gentlemanprogramming.com CSS (2026-10-21, `/_astro/business.*.css`, `/_astro/telemetry.*.css`): dark plum terminal aesthetic. Base `#1a1218` (theme-color), surfaces `#20161e` / `#241822` / `#342230`, panel black `#000`; text `#f6eff3`, subtext `#a78e9b` / `#76616b`, dim `#b99aa9`; accents rose `#f095c8`, pink `#ffb1dd`, hot rose `#ff76c3`, sky `#a9c7ee`, mint `#b4e7c7`, peach `#f2b86d`, red `#ff718f`, yellow `#e0c27a`, mauve `#d7a0b8`; borders `#ffffff17`, soft `#ffffff0f`; translucent surfaces `#ffffff07` / `#ffffff0d`. Fonts: sans "Inter", mono "IosevkaTerm NF"/"Iosevka Term"/"JetBrains Mono" (body text on the site is mono 13px/1.5). Radius small 8px, medium 12px, large 16px, full 999px. Shadows: `0 30px 60px #00000059, 0 0 40px #f095c81a` (glow), primary button glow `0 8px 20px #f095c847`. Layout cues: sidebar 280px, tab bar 40px, footer 52px; buttons `btn-primary` / `btn-secondary`.
+- **S3** — Restyle every user-facing page and component (landing/login, dashboard shell + sidebar + header, analytics, best publish times, transcripts, manual mode/rules, quota, social pages) using shared tokens and primitives; keep all copy, roles, ARIA and behavior unchanged except where a UX spec changes them. Fix the `globals.css` Arial override so the chosen fonts apply. Dark-only.
+- **S4** — Calendar to pick when to post (user: "un calendar para elegir cuando postear"): a date/time picker (month grid + time selection + timezone) replaces the raw date/time inputs in the social composer and reschedule flows; it highlights the recommended best publish slots when available.
+- **S5** — See all schedules (user: "ver todas las planificaciones"): a calendar page (month and week views) showing social posts (all statuses with colors) and YouTube videos scheduled with a publish time, read-only for YouTube; clicking a social item shows details with reschedule/cancel through the existing confirmation flow; clicking an empty future slot opens the composer prefilled with that time.
+- **S6** — Files owned by the unmerged `feat/issue-89-scheduling-ui` branch are not edited: `src/components/dashboard-upload-form.tsx`, `src/lib/video-scheduling/*`, `src/app/api/youtube/schedule/*` (restyle the upload form after that branch merges).
+
+## Tasks
+
+| ID | Specs | Task | Route | Risk | Status | Commit |
+|----|-------|------|-------|------|--------|--------|
+| T1 | S2, S3 | Tokens + fonts + `cn` + UI primitives | delegated (context backstop) | medium | done (RED → GREEN cn 6/6, ui 10/10, button-classes 6/6) | fb09c85 |
+| T2 | S3 | Shell: landing/login, dashboard layout, sidebar, header (+ rename to TubeMaster) | delegated (parallel with T3, T4) | medium | done (shell 3/3) | 74bac1e, a8f9f55 |
+| T3 | S3 | Panels: analytics, best publish times, transcripts, quota, manual mode + rules | delegated (parallel with T2, T4) | medium | done (existing tests unchanged and green) | 5df2b0b |
+| T4 | S3 | Social pages restyle (accounts, composer, queue) | delegated (parallel with T2, T3) | medium | done (presentation 17/17, components green) | 97f24bb |
+| T5 | S4 | Date/time picker with best-slot highlights in composer + reschedule (+ calendar reschedule) | delegated; calendar integration inline | medium | done (picker 9/9 → 11/11, component 4/4 → 6/6) | 81d5742, a8ea60f |
+| T6 | S5 | Schedules calendar page + read-only GET /api/youtube/scheduled | delegated (parallel with T5) | medium | done (calendar 16/16 → 18/18, service 7/7, route 4/4, component 10/10 → 12/12) | 6eefa0a |
+| T7 | S1-S5 | Browser visual QA (ego lite) + one correction batch + limited second correction | parent + workers | passive/medium | done (QA: 0 high, 4 medium; recheck 5/7 then final 2/2 PASS) | 2b90a2f, ab72753 |
+
+## Log
+
+- **L1** (2026-10-21, user, verbatim): "puedes ver la app de tubemaster y mejorar toda la interfaz siguiendo el diseño de gentlemanprogramming.com ademas" / "de mejoras a nivel ux? por ejemplo un calendar para elegir cuando postear" / "y ver todas las planificaciones".
+- **L2** (2026-10-21, evidence): UI map — all styling is inline Tailwind, no `cn` or primitives; `globals.css` is the create-next-app default and sets `font-family: Arial` on body (overrides Geist); `<html class="dark">` forced; repeated card pattern `rounded-xl border border-zinc-800 bg-zinc-950/40 p-5` (analytics-dashboard.tsx:179, best-publish-times-panel.tsx:120, social-accounts-panel.tsx:146, social-queue.tsx:226, dashboard/social/page.tsx:34); legacy light+`dark:` classes in rule-form.tsx, rule-list.tsx, run-button.tsx; component tests assert text/ARIA only (no class assertions).
+- **L3** (2026-10-21, user choice): app title renamed to "TubeMaster".
+- **L4** (2026-10-21, evidence): browser QA at 1440 and 390 — fonts render Inter/JetBrains Mono (Iosevka not installed, fallback as designed), rose buttons 8.6:1, focus rings visible, no page overflow. Fixed: mobile nav hint + active link in view, single tabbable empty slot with arrow keys, 3-day week on narrow screens opening at the current hour, muted token #76616b → #968089 (4.68:1 on surface-2), quota nowrap, picker default time/disabled past month/"Best times unavailable" note, unified segmented controls, suppressHydrationWarning (Dark Reader). Final recheck PASS: single page scroll on desktop week, no month-cell spill at 390. Open: /api/youtube/best-publish-times returns 502 ANALYTICS_API_ERROR in the user's environment (likely YouTube Analytics API not enabled for the Google Cloud project); upload form stays legacy until feat/issue-89 merges (S6).

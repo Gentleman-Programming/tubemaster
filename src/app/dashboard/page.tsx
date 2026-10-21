@@ -10,6 +10,8 @@ import { ManualMode } from "@/components/manual-mode";
 import { TranscriptDashboard } from "@/components/transcript-dashboard";
 import { AnalyticsDashboard } from "@/components/analytics-dashboard";
 import { BestPublishTimesPanel } from "@/components/best-publish-times-panel";
+import { cn } from "@/lib/cn";
+
 type Rule = {
   id: number;
   name: string;
@@ -21,6 +23,11 @@ type Rule = {
 };
 
 type Tab = "manual" | "rules";
+
+const tabClasses =
+  "flex-1 rounded-control px-4 font-mono text-xs uppercase tracking-wider transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose";
+const activeTabClasses = "border border-rose/40 bg-rose/10 text-rose";
+const inactiveTabClasses = "border border-transparent text-subtle hover:bg-glass-2 hover:text-fg";
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
@@ -43,7 +50,7 @@ export default function Dashboard() {
   if (status === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-zinc-500">Loading...</p>
+        <p className="font-mono text-sm text-subtle">Loading...</p>
       </div>
     );
   }
@@ -59,31 +66,29 @@ export default function Dashboard() {
 
   return (
     <main className="space-y-6">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-fg">Dashboard</h1>
       <AnalyticsDashboard />
       <BestPublishTimesPanel />
       <TranscriptDashboard />
 
-      <div className="mb-6 flex gap-1 rounded-lg bg-zinc-900 p-1">
+      <div className="mb-6 flex h-10 items-stretch gap-1 rounded-panel border border-line bg-panel/40 p-1">
         <button
           onClick={() => setTab("manual")}
           aria-pressed={tab === "manual"}
-          className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
-            tab === "manual"
-              ? "bg-zinc-800 text-white"
-              : "text-zinc-400 hover:text-zinc-200"
-          }`}
+          className={cn(
+            tabClasses,
+            tab === "manual" ? activeTabClasses : inactiveTabClasses,
+          )}
         >
           Manual
         </button>
         <button
           onClick={() => setTab("rules")}
           aria-pressed={tab === "rules"}
-          className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
-            tab === "rules"
-              ? "bg-zinc-800 text-white"
-              : "text-zinc-400 hover:text-zinc-200"
-          }`}
+          className={cn(
+            tabClasses,
+            tab === "rules" ? activeTabClasses : inactiveTabClasses,
+          )}
         >
           Rules
         </button>
@@ -91,7 +96,7 @@ export default function Dashboard() {
 
       {tab === "manual" ? (
         <div>
-          <p className="mb-4 text-sm text-zinc-400">
+          <p className="mb-4 text-sm text-subtle">
             Select videos and add them to a playlist directly.
           </p>
           <ManualMode />
@@ -101,13 +106,13 @@ export default function Dashboard() {
           <RuleForm onCreated={fetchRules} />
 
           <div>
-            <h2 className="mb-4 text-lg font-semibold">Your Rules</h2>
+            <h2 className="mb-4 text-lg font-semibold text-fg">Your Rules</h2>
             <RuleList rules={rules} onDelete={handleDelete} />
           </div>
 
           <div>
-            <h2 className="mb-4 text-lg font-semibold">Execute</h2>
-            <p className="mb-3 text-sm text-zinc-400">
+            <h2 className="mb-4 text-lg font-semibold text-fg">Execute</h2>
+            <p className="mb-3 text-sm text-subtle">
               Run your rules against your recent videos.
             </p>
             <RunButton />

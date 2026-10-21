@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui";
 
 type RunResult = {
   matched: number;
@@ -24,30 +25,26 @@ export function RunButton() {
 
   return (
     <div>
-      <button
-        onClick={handleRun}
-        disabled={loading}
-        className="rounded-lg bg-green-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-green-700 disabled:opacity-50"
-      >
+      <Button onClick={handleRun} disabled={loading}>
         {loading ? "Running rules..." : "Run Rules Now"}
-      </button>
+      </Button>
 
       {result && (
-        <div className="mt-4 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="mt-4 rounded-panel border border-line bg-surface-2 p-4">
           {result.matched === 0 ? (
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-subtle">
               {result.message ?? "No videos matched any rules."}
             </p>
           ) : (
             <>
-              <p className="mb-2 text-sm font-medium text-green-600">
+              <p className="mb-2 font-mono text-sm font-medium text-mint">
                 {result.matched} video(s) matched and added!
               </p>
               <ul className="space-y-1 text-sm">
                 {result.results?.map((r, i) => (
-                  <li key={i} className="text-zinc-600 dark:text-zinc-400">
-                    <span className="font-medium">{r.video}</span> → {r.playlist}{" "}
-                    <span className="text-zinc-400">(rule: {r.rule})</span>
+                  <li key={i} className="text-dim">
+                    <span className="font-medium text-fg">{r.video}</span> → {r.playlist}{" "}
+                    <span className="font-mono text-muted">(rule: {r.rule})</span>
                   </li>
                 ))}
               </ul>

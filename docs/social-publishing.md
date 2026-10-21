@@ -99,6 +99,14 @@ After the account is connected you can remove the tunnel; publishing does not us
 - Failed posts are never retried automatically.
 - Rescheduling returns the post to draft; the new time needs a new preview and confirmation.
 
+## Calendar
+
+`/dashboard/calendar` shows every social post (all statuses, colored by platform and status) and YouTube videos that are private with a scheduled publish time, in month or week view and in your browser timezone.
+
+- Select a social post to see its details and reschedule or cancel it; rescheduling uses the same preview and confirmation flow as the queue.
+- YouTube videos are read-only here; change them in YouTube Studio. They need the `youtube.readonly` scope; without it the calendar still shows social posts with a notice.
+- Select an empty future day or hour to open the composer at `/dashboard/social?at=<local time>&tz=<IANA timezone>`.
+
 ## Using it from MCP
 
 The MCP server (`npm run mcp:video-metadata`) can stage, preview, confirm and manage posts. Two parts stay in the web app:

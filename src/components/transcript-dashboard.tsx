@@ -3,9 +3,13 @@
 import { useState } from "react";
 import { formatTranscriptResult } from "./transcript-dashboard-format";
 import type { TranscriptResult } from "@/lib/video-metadata/contracts";
+import { Button, Card, Input, Label, Select } from "@/components/ui";
 
 type Provider = "youtube-captions" | "yt-dlp";
 type Transcript = TranscriptResult;
+
+const fieldLabelClasses = "mb-1 block";
+const errorClasses = "mt-4 rounded-panel border border-danger/30 bg-danger/10 p-3 text-sm text-danger";
 
 export function normalizeVideoId(input: string): string | null {
   const value = input.trim();
@@ -79,31 +83,31 @@ export function TranscriptDashboard() {
   }
 
   return (
-    <section className="mb-8 rounded-xl border border-zinc-800 bg-zinc-900 p-4" aria-labelledby="transcript-heading">
-      <h2 id="transcript-heading" className="mb-1 text-lg font-semibold">Transcript dashboard</h2>
-      <p className="mb-4 text-sm text-zinc-400">Load a transcript using the provider that fits your video.</p>
+    <Card className="mb-8" aria-labelledby="transcript-heading">
+      <h2 id="transcript-heading" className="mb-1 text-lg font-semibold text-fg">Transcript dashboard</h2>
+      <p className="mb-4 text-sm text-subtle">Load a transcript using the provider that fits your video.</p>
       <form onSubmit={handleSubmit} className="space-y-3">
         <div>
-          <label htmlFor="transcript-video" className="mb-1 block text-xs font-medium text-zinc-400">YouTube URL or video ID</label>
-          <input id="transcript-video" value={input} onChange={(event) => setInput(event.target.value)} disabled={loading} placeholder="https://youtube.com/watch?v=..." className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm placeholder:text-zinc-600 disabled:opacity-50" />
+          <Label htmlFor="transcript-video" className={fieldLabelClasses}>YouTube URL or video ID</Label>
+          <Input id="transcript-video" value={input} onChange={(event) => setInput(event.target.value)} disabled={loading} placeholder="https://youtube.com/watch?v=..." className="font-mono" />
         </div>
         <div>
-          <label htmlFor="transcript-provider" className="mb-1 block text-xs font-medium text-zinc-400">Transcript provider</label>
-          <select id="transcript-provider" value={provider} onChange={(event) => setProvider(event.target.value as Provider)} disabled={loading} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm disabled:opacity-50">
+          <Label htmlFor="transcript-provider" className={fieldLabelClasses}>Transcript provider</Label>
+          <Select id="transcript-provider" value={provider} onChange={(event) => setProvider(event.target.value as Provider)} disabled={loading}>
             <option value="youtube-captions">YouTube captions (OAuth)</option>
             <option value="yt-dlp">yt-dlp (public video)</option>
-          </select>
+          </Select>
         </div>
-        <button type="submit" disabled={loading || !input.trim()} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50">
+        <Button type="submit" disabled={loading || !input.trim()}>
           {loading ? "Loading transcript..." : "Load transcript"}
-        </button>
+        </Button>
       </form>
       <div aria-live="polite" aria-busy={loading}>
-        {error && <p role="alert" className="mt-4 rounded-lg border border-red-900 bg-red-950/50 p-3 text-sm text-red-400">{error}</p>}
-        {transcript?.status === "available" && <div className="mt-4 rounded-lg border border-zinc-800 bg-zinc-950 p-3"><p className="mb-2 text-xs text-zinc-500">{transcriptDisplayText(transcript, null, false)}</p><pre className="max-h-96 overflow-auto whitespace-pre-wrap text-sm text-zinc-200">{formatTranscriptResult(transcript)}</pre></div>}
-        {transcript?.status === "unavailable" && <p role="status" className="mt-4 rounded-lg border border-zinc-800 p-3 text-sm text-zinc-400">{transcriptDisplayText(transcript, null, false)}</p>}
-        {transcript?.status === "unsupported" && <p role="alert" className="mt-4 rounded-lg border border-red-900 bg-red-950/50 p-3 text-sm text-red-400">{transcriptDisplayText(transcript, null, false)}</p>}
+        {error && <p role="alert" className={errorClasses}>{error}</p>}
+        {transcript?.status === "available" && <div className="mt-4 rounded-panel border border-line bg-panel p-3"><p className="mb-2 font-mono text-xs text-mint">{transcriptDisplayText(transcript, null, false)}</p><pre className="max-h-96 overflow-auto whitespace-pre-wrap font-mono text-sm text-dim">{formatTranscriptResult(transcript)}</pre></div>}
+        {transcript?.status === "unavailable" && <p role="status" className="mt-4 rounded-panel border border-warn/30 bg-warn/10 p-3 text-sm text-warn">{transcriptDisplayText(transcript, null, false)}</p>}
+        {transcript?.status === "unsupported" && <p role="alert" className={errorClasses}>{transcriptDisplayText(transcript, null, false)}</p>}
       </div>
-    </section>
+    </Card>
   );
 }

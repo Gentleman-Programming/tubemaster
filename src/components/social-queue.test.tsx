@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { SocialPost } from "@/lib/social/contracts";
-import { cancelSocialPost, requestSocialPosts, rescheduleSocialPost, SocialQueueContent } from "./social-queue";
+import { cancelSocialPost, requestSocialPosts, RescheduleEditor, rescheduleSocialPost, SocialQueueContent } from "./social-queue";
 
 const base: SocialPost = {
   id: "post-1",
@@ -76,4 +76,22 @@ test("renders empty, loading and error states", () => {
   assert.match(renderToStaticMarkup(<SocialQueueContent view={{ kind: "result", posts: [] }} loading={false} />), /No posts yet/);
   assert.match(renderToStaticMarkup(<SocialQueueContent view={null} loading />), /Loading posts/);
   assert.match(renderToStaticMarkup(<SocialQueueContent view={{ kind: "error", message: "Boom." }} loading={false} />), /role="alert"/);
+});
+
+test("the reschedule editor uses the date picker", () => {
+  const html = renderToStaticMarkup(
+    <RescheduleEditor
+      state={{ post: base, date: "2026-10-23", time: "10:00", timezone: "UTC", preview: null }}
+      busy={false}
+      onChange={() => {}}
+      onSubmit={() => {}}
+      onClose={() => {}}
+    />,
+  );
+  assert.match(html, /role="grid"/);
+  assert.match(html, /aria-label="New publish date, October 2026"/);
+  assert.match(html, /aria-label="New publish time"/);
+  assert.match(html, /aria-label="IANA timezone"/);
+  assert.match(html, /Preview new time/);
+  assert.doesNotMatch(html, /type="date"/);
 });

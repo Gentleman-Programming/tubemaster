@@ -8,6 +8,7 @@ import {
   formatBytes,
   formatScheduledLocal,
   formatScheduledUtc,
+  platformChip,
   platformLabel,
   SOCIAL_CAPTION_MAX_LENGTH,
   TIKTOK_PRIVACY_OPTIONS,
@@ -16,6 +17,9 @@ import {
   type SocialApiResult,
   type SocialFetcher,
 } from "@/lib/social/presentation";
+import { parseLocalDateTime, validateLocalDateTime, type PickerValue } from "@/lib/datetime-picker";
+import { Button, DateTimePicker, Label, Select, Textarea, useBestPublishSlots } from "@/components/ui";
+import { cn } from "@/lib/cn";
 
 /** Client copy of the queue preview reply; the server type lives in a server-only module. */
 export type SocialPostPreview = {
@@ -88,10 +92,31 @@ export function validateComposer(form: ComposerForm, stagingFile: string, connec
   if (!form.caption.trim()) errors.caption = "Enter a caption.";
   else if (form.caption.length > SOCIAL_CAPTION_MAX_LENGTH) errors.caption = `Caption must be at most ${SOCIAL_CAPTION_MAX_LENGTH} characters.`;
   if (form.mode === "at") {
-    if (!toLocalDateTime(form.date, form.time)) errors.schedule = "Enter a valid date and time.";
+    const localDateTime = toLocalDateTime(form.date, form.time);
+    if (!localDateTime) errors.schedule = "Enter a valid date and time.";
     else if (!isTimezone(form.timezone)) errors.schedule = "Enter a valid IANA timezone, such as America/New_York.";
+    else {
+      const check = validateLocalDateTime(localDateTime, form.timezone);
+      if (!check.ok) errors.schedule = check.message;
+    }
   }
   return errors;
+}
+
+/** Picker value for a form's date, time and timezone, or null while incomplete. */
+export function schedulePickerValue(date: string, time: string, timezone: string): PickerValue | null {
+  const localDateTime = toLocalDateTime(date, time);
+  return localDateTime && timezone ? { localDateTime, timezone } : null;
+}
+
+/** Splits a picked value back into the form's date, time and timezone fields. */
+export function scheduleFields(value: PickerValue): { date: string; time: string; timezone: string } {
+  const parsed = parseLocalDateTime(value.localDateTime);
+  return { date: parsed?.date ?? "", time: parsed?.time ?? "", timezone: value.timezone };
+}
+
+function initialComposerForm(initialSchedule?: PickerValue | null): ComposerForm {
+  return initialSchedule ? { ...emptyComposerForm, mode: "at", ...scheduleFields(initialSchedule) } : emptyComposerForm;
 }
 
 export function buildPreviewBody(form: ComposerForm, stagingFile: string): SocialPreviewBody {
@@ -145,12 +170,12 @@ export function confirmSocialPost(postId: string, confirmationToken: string, fet
   return callSocialApi<SocialPost>(fetcher, `/api/social/posts/${encodeURIComponent(postId)}/confirm`, jsonPost({ confirmationToken }));
 }
 
-export const inputClass =
-  "w-full min-w-0 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
-export const secondaryButtonClass =
-  "rounded-lg border border-zinc-600 px-4 py-2 font-medium hover:bg-zinc-800 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
-export const primaryButtonClass =
-  "rounded-lg bg-white px-4 py-2 font-medium text-zinc-950 hover:bg-zinc-200 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
+const optionsFieldsetClass = "space-y-3 rounded-panel border border-line bg-glass p-4";
+const legendClass = "px-1 font-mono text-xs uppercase tracking-widest text-subtle";
+/** Selectable chip around a native radio; the checked state comes from the input itself. */
+const choiceChipClass =
+  "flex cursor-pointer items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5 text-sm text-dim transition-colors hover:border-rose/40 has-checked:border-rose/60 has-checked:bg-rose/10 has-checked:text-fg has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-rose has-disabled:cursor-not-allowed has-disabled:opacity-50";
+const termClass = "font-mono text-xs uppercase tracking-widest text-subtle sm:pt-0.5";
 
 export function SocialPostPreviewCard({
   preview,
@@ -173,34 +198,40 @@ export function SocialPostPreviewCard({
   const { post } = preview;
   const timezone = publishNow ? displayTimezone : post.timezone;
   return (
-    <div aria-label="Post preview" className="space-y-3 rounded-lg border border-zinc-600 p-4 text-sm">
-      <p className="font-medium text-white">Review exactly what will be posted. Nothing is posted until you confirm.</p>
-      <dl className="grid gap-2 sm:grid-cols-[10rem_minmax(0,1fr)]">
-        <dt className="text-zinc-400">Account</dt>
-        <dd>{preview.account.displayName} ({platformLabel(preview.account.platform)})</dd>
-        <dt className="text-zinc-400">Video</dt>
-        <dd>{videoName ?? preview.video.stagingFile} · {formatBytes(preview.video.size)}</dd>
-        <dt className="text-zinc-400">Caption</dt>
-        <dd className="whitespace-pre-wrap break-words">{post.caption}</dd>
-        <dt className="text-zinc-400">Options</dt>
-        <dd>
-          <ul>{describePlatformOptions(post.platform, post.platformOptions).map((line) => <li key={line}>{line}</li>)}</ul>
+    <div aria-label="Post preview" className="space-y-4 rounded-card border border-rose/40 bg-surface p-5 text-sm shadow-glow">
+      <p className="flex items-start gap-2 font-medium text-fg">
+        <span aria-hidden="true" className="mt-1.5 size-2 shrink-0 rounded-full bg-rose" />
+        Review exactly what will be posted. Nothing is posted until you confirm.
+      </p>
+      <dl className="grid gap-x-4 gap-y-3 rounded-panel border border-line-soft bg-glass p-4 sm:grid-cols-[10rem_minmax(0,1fr)]">
+        <dt className={termClass}>Account</dt>
+        <dd className="flex items-center gap-2 text-fg">
+          <span aria-hidden="true" className={cn("size-2 rounded-full", platformChip(preview.account.platform).dotClassName)} />
+          {preview.account.displayName} ({platformLabel(preview.account.platform)})
         </dd>
-        <dt className="text-zinc-400">When</dt>
+        <dt className={termClass}>Video</dt>
+        <dd className="font-mono text-xs text-dim">{videoName ?? preview.video.stagingFile} · {formatBytes(preview.video.size)}</dd>
+        <dt className={termClass}>Caption</dt>
+        <dd className="whitespace-pre-wrap break-words text-fg">{post.caption}</dd>
+        <dt className={termClass}>Options</dt>
         <dd>
-          {publishNow && <p>As soon as you confirm (within 5 minutes of this preview).</p>}
-          <p>{formatScheduledLocal(preview.scheduledAtUtc, timezone)}</p>
-          <p className="text-zinc-400"><time dateTime={preview.scheduledAtUtc}>{formatScheduledUtc(preview.scheduledAtUtc)}</time></p>
+          <ul className="space-y-0.5 font-mono text-xs text-dim">{describePlatformOptions(post.platform, post.platformOptions).map((line) => <li key={line}>{line}</li>)}</ul>
+        </dd>
+        <dt className={termClass}>When</dt>
+        <dd className="space-y-0.5">
+          {publishNow && <p className="text-dim">As soon as you confirm (within 5 minutes of this preview).</p>}
+          <p className="font-mono text-fg">{formatScheduledLocal(preview.scheduledAtUtc, timezone)}</p>
+          <p className="font-mono text-xs text-subtle"><time dateTime={preview.scheduledAtUtc}>{formatScheduledUtc(preview.scheduledAtUtc)}</time></p>
         </dd>
       </dl>
-      <p className="text-xs text-zinc-500">
-        This confirmation expires at {formatScheduledLocal(preview.confirmationExpiresAt, displayTimezone)}. After that, preview again.
+      <p className="text-xs text-muted">
+        This confirmation expires at <span className="font-mono">{formatScheduledLocal(preview.confirmationExpiresAt, displayTimezone)}</span>. After that, preview again.
       </p>
       <div className="flex flex-wrap gap-3">
-        <button type="button" disabled={busy} onClick={onConfirm} className={primaryButtonClass}>
+        <Button disabled={busy} onClick={onConfirm}>
           {publishNow ? "Confirm and publish now" : "Confirm and schedule"}
-        </button>
-        <button type="button" disabled={busy} onClick={onBack} className={secondaryButtonClass}>Back</button>
+        </Button>
+        <Button variant="secondary" disabled={busy} onClick={onBack}>Back</Button>
       </div>
     </div>
   );
@@ -215,14 +246,17 @@ export function SocialComposer({
   stagingFile,
   fetcher = defaultFetcher,
   onQueueChange,
+  initialSchedule,
 }: {
   accounts: SocialAccount[] | null;
   /** An already staged file name to reuse instead of choosing a new file. */
   stagingFile?: string;
   fetcher?: SocialFetcher;
   onQueueChange?: () => void;
+  /** Prefilled scheduled time, e.g. from a calendar link; selects "Schedule". */
+  initialSchedule?: PickerValue | null;
 }) {
-  const [form, setForm] = useState<ComposerForm>(emptyComposerForm);
+  const [form, setForm] = useState<ComposerForm>(() => initialComposerForm(initialSchedule));
   const [localTimezone, setLocalTimezone] = useState("UTC");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [stagedFrom, setStagedFrom] = useState<File | null>(null);
@@ -238,11 +272,12 @@ export function SocialComposer({
     setLocalTimezone(timezone);
     setForm((current) => (current.timezone ? current : { ...current, timezone }));
   }, []);
+  const bestSlots = useBestPublishSlots(form.timezone || null, form.mode === "at", fetcher);
 
-  if (accounts === null) return <p role="status" className="text-sm text-zinc-400">Loading connected accounts...</p>;
+  if (accounts === null) return <p role="status" className="font-mono text-sm text-subtle">Loading connected accounts...</p>;
   const connected = accounts.map((account) => account.platform);
   if (!connected.length) {
-    return <p className="text-sm text-zinc-400">Connect a TikTok or Instagram account above to publish videos.</p>;
+    return <p className="text-sm text-subtle">Connect a TikTok or Instagram account above to publish videos.</p>;
   }
   const platform = form.platform && connected.includes(form.platform) ? form.platform : connected[0];
   const current: ComposerForm = { ...form, platform };
@@ -321,24 +356,24 @@ export function SocialComposer({
             setMessage("The unconfirmed draft stays in the queue until you cancel it.");
           }}
         />
-        <p role="status" aria-live="polite" className="text-sm text-zinc-300">{message}</p>
+        <p role="status" aria-live="polite" className="text-sm text-dim">{message}</p>
       </div>
     );
   }
 
   const fieldError = (key: keyof ComposerErrors) =>
-    errors[key] && <p id={`social-error-${key}`} className="text-sm text-red-300">{errors[key]}</p>;
+    errors[key] && <p id={`social-error-${key}`} className="text-sm text-danger">{errors[key]}</p>;
   const checkbox = (key: "disableComment" | "disableDuet" | "disableStitch" | "shareToFeed", label: string) => (
-    <label className="flex items-center gap-2 text-sm">
-      <input type="checkbox" checked={current[key]} onChange={(event) => update(key, event.target.checked)} disabled={busy} />
+    <label className="flex items-center gap-2 text-sm text-dim">
+      <input type="checkbox" checked={current[key]} onChange={(event) => update(key, event.target.checked)} disabled={busy} className="size-4 accent-rose" />
       {label}
     </label>
   );
 
   return (
-    <form noValidate className="space-y-4" onSubmit={(event) => { event.preventDefault(); void submitPreview(); }}>
+    <form noValidate className="space-y-5" onSubmit={(event) => { event.preventDefault(); void submitPreview(); }}>
       <div className="space-y-1">
-        <label htmlFor="social-video" className="block text-sm font-medium">Video file</label>
+        <Label htmlFor="social-video" className="block">Video file</Label>
         <input
           id="social-video"
           type="file"
@@ -347,18 +382,18 @@ export function SocialComposer({
           disabled={busy}
           aria-invalid={!!errors.video}
           aria-describedby={errors.video ? "social-error-video" : undefined}
-          className={inputClass}
+          className="w-full min-w-0 rounded-control border border-dashed border-line bg-surface p-2 text-sm text-dim transition-colors file:mr-3 file:rounded-control file:border-0 file:bg-surface-3 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-fg hover:border-rose/40 focus-visible:outline-2 focus-visible:outline-rose/40 disabled:opacity-50 aria-invalid:border-danger"
         />
-        {staged && !selectedFile && <p className="text-sm text-zinc-300">Using staged file {staged.filename}.</p>}
-        {selectedFile && <p className="text-sm text-zinc-300">Selected: {selectedFile.name}{stagedFrom === selectedFile ? " — staged" : " — staged when you preview"}</p>}
+        {staged && !selectedFile && <p className="text-sm text-dim">Using staged file <span className="font-mono">{staged.filename}</span>.</p>}
+        {selectedFile && <p className="text-sm text-dim">Selected: {selectedFile.name}{stagedFrom === selectedFile ? " — staged" : " — staged when you preview"}</p>}
         {fieldError("video")}
       </div>
 
       <fieldset className="space-y-2">
-        <legend className="text-sm font-medium">Account</legend>
-        <div className="flex flex-wrap gap-4">
+        <legend className="text-sm font-medium text-dim">Account</legend>
+        <div className="flex flex-wrap gap-2">
           {accounts.map((account) => (
-            <label key={account.platform} className="flex items-center gap-2 text-sm">
+            <label key={account.platform} className={choiceChipClass}>
               <input
                 type="radio"
                 name="social-platform"
@@ -366,7 +401,9 @@ export function SocialComposer({
                 checked={platform === account.platform}
                 onChange={() => update("platform", account.platform)}
                 disabled={busy}
+                className="sr-only"
               />
+              <span aria-hidden="true" className={cn("size-2 rounded-full", platformChip(account.platform).dotClassName)} />
               {platformLabel(account.platform)} · {account.displayName}
             </label>
           ))}
@@ -375,8 +412,8 @@ export function SocialComposer({
       </fieldset>
 
       <div className="space-y-1">
-        <label htmlFor="social-caption" className="block text-sm font-medium">Caption</label>
-        <textarea
+        <Label htmlFor="social-caption" className="block">Caption</Label>
+        <Textarea
           id="social-caption"
           rows={4}
           maxLength={SOCIAL_CAPTION_MAX_LENGTH}
@@ -385,57 +422,61 @@ export function SocialComposer({
           disabled={busy}
           aria-invalid={!!errors.caption}
           aria-describedby={errors.caption ? "social-error-caption" : undefined}
-          className={inputClass}
         />
-        <p className="text-xs text-zinc-500">{current.caption.length}/{SOCIAL_CAPTION_MAX_LENGTH}</p>
+        <p className="text-right font-mono text-xs text-muted">{current.caption.length}/{SOCIAL_CAPTION_MAX_LENGTH}</p>
         {fieldError("caption")}
       </div>
 
       {platform === "tiktok" ? (
-        <fieldset className="space-y-2 rounded-lg border border-zinc-800 p-4">
-          <legend className="px-1 text-sm font-medium">TikTok options</legend>
-          <p role="note" className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-200">{TIKTOK_UNAUDITED_NOTICE}</p>
-          <label htmlFor="social-privacy" className="block text-sm font-medium">Privacy</label>
-          <select id="social-privacy" value={current.privacyLevel} onChange={(event) => update("privacyLevel", event.target.value)} disabled={busy} className={inputClass}>
+        <fieldset className={optionsFieldsetClass}>
+          <legend className={legendClass}>TikTok options</legend>
+          <p role="note" className="rounded-panel border border-warn/30 bg-warn/10 p-3 text-sm text-warn">{TIKTOK_UNAUDITED_NOTICE}</p>
+          <Label htmlFor="social-privacy" className="block">Privacy</Label>
+          <Select id="social-privacy" value={current.privacyLevel} onChange={(event) => update("privacyLevel", event.target.value)} disabled={busy}>
             {TIKTOK_PRIVACY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label} ({option.value})</option>)}
-          </select>
+          </Select>
           {checkbox("disableComment", "Disable comments")}
           {checkbox("disableDuet", "Disable duet")}
           {checkbox("disableStitch", "Disable stitch")}
         </fieldset>
       ) : (
-        <fieldset className="space-y-2 rounded-lg border border-zinc-800 p-4">
-          <legend className="px-1 text-sm font-medium">Instagram options</legend>
-          <p className="text-sm text-zinc-400">Published as a Reel. Requires an Instagram professional account.</p>
+        <fieldset className={optionsFieldsetClass}>
+          <legend className={legendClass}>Instagram options</legend>
+          <p className="text-sm text-subtle">Published as a Reel. Requires an Instagram professional account.</p>
           {checkbox("shareToFeed", "Share to feed")}
         </fieldset>
       )}
 
       <fieldset className="space-y-2">
-        <legend className="text-sm font-medium">When</legend>
-        <div className="flex flex-wrap gap-4">
-          <label className="flex items-center gap-2 text-sm">
-            <input type="radio" name="social-mode" value="now" checked={current.mode === "now"} onChange={() => update("mode", "now")} disabled={busy} />
+        <legend className="text-sm font-medium text-dim">When</legend>
+        <div className="flex flex-wrap gap-2">
+          <label className={choiceChipClass}>
+            <input type="radio" name="social-mode" value="now" checked={current.mode === "now"} onChange={() => update("mode", "now")} disabled={busy} className="sr-only" />
             Publish now
           </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="radio" name="social-mode" value="at" checked={current.mode === "at"} onChange={() => update("mode", "at")} disabled={busy} />
+          <label className={choiceChipClass}>
+            <input type="radio" name="social-mode" value="at" checked={current.mode === "at"} onChange={() => update("mode", "at")} disabled={busy} className="sr-only" />
             Schedule
           </label>
         </div>
         {current.mode === "at" && (
-          <div className="grid gap-3 sm:grid-cols-3">
-            <input type="date" aria-label="Publish date" value={current.date} onChange={(event) => update("date", event.target.value)} disabled={busy} className={inputClass} />
-            <input type="time" aria-label="Publish time" value={current.time} onChange={(event) => update("time", event.target.value)} disabled={busy} className={inputClass} />
-            <input type="text" aria-label="IANA timezone" value={current.timezone} onChange={(event) => update("timezone", event.target.value)} disabled={busy} className={inputClass} />
-          </div>
+          <DateTimePicker
+            label="Publish date"
+            timeLabel="Publish time"
+            value={schedulePickerValue(current.date, current.time, current.timezone)}
+            timezone={current.timezone || undefined}
+            onTimezoneChange={(timezone) => update("timezone", timezone)}
+            onChange={(value) => setForm((previous) => ({ ...previous, ...scheduleFields(value) }))}
+            bestSlots={bestSlots}
+            disabled={busy}
+          />
         )}
-        {current.mode === "at" && <p className="text-xs text-zinc-500">The app must be running at that time. Posts more than 5 minutes late are marked missed and never published late.</p>}
+        {current.mode === "at" && <p className="text-xs text-muted">The app must be running at that time. Posts more than 5 minutes late are marked missed and never published late.</p>}
         {fieldError("schedule")}
       </fieldset>
 
-      <button type="submit" disabled={busy} className={secondaryButtonClass}>Preview</button>
-      <p role="status" aria-live="polite" className="text-sm text-zinc-300">{message}</p>
+      <Button type="submit" disabled={busy}>Preview</Button>
+      <p role="status" aria-live="polite" className="text-sm text-dim">{message}</p>
     </form>
   );
 }

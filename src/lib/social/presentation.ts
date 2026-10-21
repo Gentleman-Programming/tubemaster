@@ -10,43 +10,73 @@ export function platformLabel(platform: SocialPlatform): string {
   return PLATFORM_LABELS[platform];
 }
 
-export type PostStatusBadge = { label: string; description: string; className: string };
+export type PlatformChip = { label: string; dotClassName: string };
+
+const PLATFORM_DOTS: Record<SocialPlatform, string> = { tiktok: "bg-sky", instagram: "bg-hot" };
+
+/** Label and accent dot for a platform chip. */
+export function platformChip(platform: SocialPlatform): PlatformChip {
+  return { label: PLATFORM_LABELS[platform], dotClassName: PLATFORM_DOTS[platform] };
+}
+
+/** Same names as the UI Badge tones; kept here so this module stays free of component imports. */
+export type PostStatusTone = "neutral" | "rose" | "sky" | "mint" | "peach" | "danger" | "warn";
+
+/**
+ * `tone` and `modifier` feed the Badge primitive; `className` is the self-contained token
+ * styling for surfaces that do not use Badge (for example calendar chips).
+ */
+export type PostStatusBadge = { label: string; description: string; tone: PostStatusTone; modifier: string; className: string };
 
 const BADGES: Record<SocialPostStatus, PostStatusBadge> = {
   draft: {
     label: "Draft",
     description: "Waiting for your confirmation. Nothing is posted until you confirm.",
-    className: "border-zinc-600 bg-zinc-800 text-zinc-200",
+    tone: "neutral",
+    modifier: "",
+    className: "border-line bg-glass-2 text-dim",
   },
   scheduled: {
     label: "Scheduled",
     description: "Confirmed. It is published at the scheduled time while the app is running.",
-    className: "border-sky-500/40 bg-sky-500/10 text-sky-200",
+    tone: "sky",
+    modifier: "",
+    className: "border-sky/30 bg-sky/10 text-sky",
   },
   publishing: {
     label: "Publishing",
     description: "Uploading to the platform now.",
-    className: "border-indigo-500/40 bg-indigo-500/10 text-indigo-200",
+    tone: "rose",
+    modifier: "animate-pulse",
+    className: "border-rose/30 bg-rose/10 text-rose animate-pulse",
   },
   published: {
     label: "Published",
     description: "Posted to the platform.",
-    className: "border-emerald-500/40 bg-emerald-500/10 text-emerald-200",
+    tone: "mint",
+    modifier: "",
+    className: "border-mint/30 bg-mint/10 text-mint",
   },
   failed: {
     label: "Failed",
     description: "The platform did not accept the post. It is not retried automatically; check the platform before rescheduling.",
-    className: "border-red-500/40 bg-red-500/10 text-red-200",
+    tone: "danger",
+    modifier: "",
+    className: "border-danger/30 bg-danger/10 text-danger",
   },
   missed: {
     label: "Missed",
     description: "Not published: the app was not running at the scheduled time. Reschedule to publish.",
-    className: "border-amber-500/40 bg-amber-500/10 text-amber-200",
+    tone: "peach",
+    modifier: "",
+    className: "border-peach/30 bg-peach/10 text-peach",
   },
   cancelled: {
     label: "Cancelled",
     description: "Cancelled. It will not be published.",
-    className: "border-zinc-700 bg-zinc-900 text-zinc-400",
+    tone: "neutral",
+    modifier: "opacity-60",
+    className: "border-line-soft bg-glass text-muted",
   },
 };
 
