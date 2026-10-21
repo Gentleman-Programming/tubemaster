@@ -188,6 +188,25 @@ export function timeOptionsForDay(date: string, context: PickerContext): TimeOpt
   });
 }
 
+const DEFAULT_TIME = "09:00";
+
+/** Time preselected when a day is picked: next free slot today, else the day's first best slot, else 09:00. */
+export function defaultTimeForDay(date: string, context: PickerContext): string {
+  const enabled = timeOptionsForDay(date, context).filter((option) => !option.disabled);
+  if (date === zonedNow(context.now, context.timezone).date) return enabled[0]?.value ?? DEFAULT_TIME;
+  return (
+    enabled.find((option) => option.recommended)?.value ??
+    enabled.find((option) => option.value >= DEFAULT_TIME)?.value ??
+    DEFAULT_TIME
+  );
+}
+
+/** The previous month is reachable only while it still has a day that is not in the past. */
+export function canShowPreviousMonth(view: { year: number; month: number }, context: Pick<PickerContext, "now" | "timezone">): boolean {
+  const lastOfPrevious = keyFromUtcMs(Date.UTC(view.year, view.month - 1, 0));
+  return lastOfPrevious >= zonedNow(context.now, context.timezone).date;
+}
+
 export function timezoneOptions(current: string): string[] {
   return [...new Set([...(isTimezone(current) && !COMMON_TIMEZONES.includes(current) ? [current] : []), ...COMMON_TIMEZONES])];
 }

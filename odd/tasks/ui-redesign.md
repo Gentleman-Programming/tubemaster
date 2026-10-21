@@ -15,15 +15,17 @@ Objective: restyle the whole TubeMaster interface with the gentlemanprogramming.
 
 | ID | Specs | Task | Route | Risk | Status | Commit |
 |----|-------|------|-------|------|--------|--------|
-| T1 | S2, S3 | Tokens + fonts (`globals.css` @theme, Inter + JetBrains Mono, Arial fix) + `cn` helper + UI primitives (Button, Card, Badge, Input/Select, SectionHeader, EmptyState) with tests | delegated (context backstop) | medium | pending | |
-| T2 | S3 | Shell: landing/login, dashboard layout, sidebar, header | delegated | medium | pending | |
-| T3 | S3 | Panels: analytics, best publish times, transcripts, quota, manual mode + rules (remove legacy light/dark classes) | delegated (parallel with T4) | medium | pending | |
-| T4 | S3 | Social pages restyle (accounts, composer, queue) | delegated (parallel with T3) | medium | pending | |
-| T5 | S4 | Date/time picker with best-slot highlights in composer + reschedule | delegated | medium | pending | |
-| T6 | S5 | Schedules calendar page: API for scheduled YouTube videos (read-only) + month/week views + item actions | delegated | medium | pending | |
-| T7 | S1-S5 | Visual check in the browser (ego lite) of every page + fixes | parent + worker | passive | pending | |
+| T1 | S2, S3 | Tokens + fonts + `cn` + UI primitives | delegated (context backstop) | medium | done (RED → GREEN cn 6/6, ui 10/10, button-classes 6/6) | fb09c85 |
+| T2 | S3 | Shell: landing/login, dashboard layout, sidebar, header (+ rename to TubeMaster) | delegated (parallel with T3, T4) | medium | done (shell 3/3) | 74bac1e, a8f9f55 |
+| T3 | S3 | Panels: analytics, best publish times, transcripts, quota, manual mode + rules | delegated (parallel with T2, T4) | medium | done (existing tests unchanged and green) | 5df2b0b |
+| T4 | S3 | Social pages restyle (accounts, composer, queue) | delegated (parallel with T2, T3) | medium | done (presentation 17/17, components green) | 97f24bb |
+| T5 | S4 | Date/time picker with best-slot highlights in composer + reschedule (+ calendar reschedule) | delegated; calendar integration inline | medium | done (picker 9/9 → 11/11, component 4/4 → 6/6) | 81d5742, a8ea60f |
+| T6 | S5 | Schedules calendar page + read-only GET /api/youtube/scheduled | delegated (parallel with T5) | medium | done (calendar 16/16 → 18/18, service 7/7, route 4/4, component 10/10 → 12/12) | 6eefa0a |
+| T7 | S1-S5 | Browser visual QA (ego lite) + one correction batch + limited second correction | parent + workers | passive/medium | done (QA: 0 high, 4 medium; recheck 5/7 then final 2/2 PASS) | 2b90a2f, ab72753 |
 
 ## Log
 
 - **L1** (2026-10-21, user, verbatim): "puedes ver la app de tubemaster y mejorar toda la interfaz siguiendo el diseño de gentlemanprogramming.com ademas" / "de mejoras a nivel ux? por ejemplo un calendar para elegir cuando postear" / "y ver todas las planificaciones".
 - **L2** (2026-10-21, evidence): UI map — all styling is inline Tailwind, no `cn` or primitives; `globals.css` is the create-next-app default and sets `font-family: Arial` on body (overrides Geist); `<html class="dark">` forced; repeated card pattern `rounded-xl border border-zinc-800 bg-zinc-950/40 p-5` (analytics-dashboard.tsx:179, best-publish-times-panel.tsx:120, social-accounts-panel.tsx:146, social-queue.tsx:226, dashboard/social/page.tsx:34); legacy light+`dark:` classes in rule-form.tsx, rule-list.tsx, run-button.tsx; component tests assert text/ARIA only (no class assertions).
+- **L3** (2026-10-21, user choice): app title renamed to "TubeMaster".
+- **L4** (2026-10-21, evidence): browser QA at 1440 and 390 — fonts render Inter/JetBrains Mono (Iosevka not installed, fallback as designed), rose buttons 8.6:1, focus rings visible, no page overflow. Fixed: mobile nav hint + active link in view, single tabbable empty slot with arrow keys, 3-day week on narrow screens opening at the current hour, muted token #76616b → #968089 (4.68:1 on surface-2), quota nowrap, picker default time/disabled past month/"Best times unavailable" note, unified segmented controls, suppressHydrationWarning (Dark Reader). Final recheck PASS: single page scroll on desktop week, no month-cell spill at 390. Open: /api/youtube/best-publish-times returns 502 ANALYTICS_API_ERROR in the user's environment (likely YouTube Analytics API not enabled for the Google Cloud project); upload form stays legacy until feat/issue-89 merges (S6).

@@ -23,15 +23,10 @@ type Action = "add" | "remove";
 
 const segmentedGroupClasses = "flex gap-1 rounded-panel border border-line bg-surface p-1";
 
-function segmentClasses(active: boolean, tone: "rose" | "mint" | "danger" = "rose"): string {
-  const activeClasses = {
-    rose: "bg-rose text-canvas",
-    mint: "bg-mint text-canvas",
-    danger: "bg-danger text-canvas",
-  }[tone];
+function segmentClasses(active: boolean): string {
   return cn(
-    "rounded-control px-3 py-1.5 font-mono text-xs font-medium transition-colors",
-    active ? activeClasses : "text-subtle hover:bg-glass-2 hover:text-fg",
+    "rounded-control border px-3 py-1.5 font-mono text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose",
+    active ? "border-rose/40 bg-rose/10 text-rose" : "border-transparent text-subtle hover:bg-glass-2 hover:text-fg",
   );
 }
 
@@ -333,13 +328,13 @@ export function ManualMode() {
         <div className={segmentedGroupClasses}>
           <button
             onClick={() => setAction("add")}
-            className={cn("flex-1", segmentClasses(action === "add", "mint"))}
+            className={cn("flex-1", segmentClasses(action === "add"))}
           >
             Add to playlist
           </button>
           <button
             onClick={() => setAction("remove")}
-            className={cn("flex-1", segmentClasses(action === "remove", "danger"))}
+            className={cn("flex-1", segmentClasses(action === "remove"))}
           >
             Remove from playlist
           </button>

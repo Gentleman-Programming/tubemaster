@@ -196,13 +196,48 @@ export function buildMonthGrid(args: {
   return { year, month, weeks };
 }
 
-export function buildWeekView(args: { anchor: DayKey; timezone: string; now: Date; items: readonly CalendarItem[] }): WeekView {
+/** `count` consecutive days from `start`, laid out like a week (used for narrow screens). */
+export function buildDayRange(args: { start: DayKey; count: number; timezone: string; now: Date; items: readonly CalendarItem[] }): WeekView {
   const today = todayKey(args.now, args.timezone);
   const buckets = bucketItems(args.items, args.timezone);
-  const monday = startOfWeek(args.anchor);
-  const days: WeekDay[] = Array.from({ length: 7 }, (_, index) => {
-    const key = shiftDays(monday, index);
+  const days: WeekDay[] = Array.from({ length: args.count }, (_, index) => {
+    const key = shiftDays(args.start, index);
     return { key, isToday: key === today, hours: hoursOf(key, args.timezone, args.now, buckets) };
   });
   return { days };
+}
+
+export function buildWeekView(args: { anchor: DayKey; timezone: string; now: Date; items: readonly CalendarItem[] }): WeekView {
+  return buildDayRange({ ...args, start: startOfWeek(args.anchor), count: 7 });
+}
+
+export type SlotCell = { row: number; col: number };
+
+/**
+ * Roving focus between empty-slot cells (row-major order). Arrows move within the row or column to the
+ * closest cell; Left/Right fall back to the previous/next cell in reading order. Returns null to stay put.
+ */
+export function nextSlotCell(cells: readonly SlotCell[], from: number, key: string): number | null {
+  const current = cells[from];
+  if (!current) return null;
+  const indexed = cells.map((cell, index) => ({ ...cell, index }));
+  const closest = (candidates: typeof indexed, distance: (cell: SlotCell) => number) =>
+    candidates.sort((a, b) => distance(a) - distance(b))[0]?.index ?? null;
+  const sameRow = indexed.filter((cell) => cell.row === current.row);
+  switch (key) {
+    case "ArrowRight":
+      return from + 1 < cells.length ? from + 1 : null;
+    case "ArrowLeft":
+      return from > 0 ? from - 1 : null;
+    case "ArrowDown":
+      return closest(indexed.filter((cell) => cell.col === current.col && cell.row > current.row), (cell) => cell.row);
+    case "ArrowUp":
+      return closest(indexed.filter((cell) => cell.col === current.col && cell.row < current.row), (cell) => -cell.row);
+    case "Home":
+      return sameRow[0].index;
+    case "End":
+      return sameRow[sameRow.length - 1].index;
+    default:
+      return null;
+  }
 }

@@ -60,7 +60,7 @@ export function DashboardHeader() {
             <p className="text-xl font-semibold text-fg">TubeMaster</p>
             <p className="font-mono text-xs text-subtle">Welcome, {session?.user?.name}</p>
           </div>
-          <Button variant="secondary" onClick={() => signOut()}>
+          <Button variant="secondary" size="sm" onClick={() => signOut()}>
             Sign Out
           </Button>
         </div>

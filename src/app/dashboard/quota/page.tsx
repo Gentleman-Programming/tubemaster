@@ -65,10 +65,10 @@ export default function QuotaPage() {
         ) : usage.summaries.length === 0 ? (
           <EmptyState title="No quota usage recorded yet." />
         ) : (
-          <div className="overflow-x-auto rounded-card border border-line bg-surface-2">
+          <div className="overflow-x-auto rounded-card border border-line bg-surface-2 mask-r-from-85% md:mask-none">
             <table className="w-full text-left text-sm">
               <thead className="bg-surface font-mono text-xs uppercase tracking-wider text-muted"><tr>
-                <th scope="col" className="p-3 font-medium">Bucket date</th>
+                <th scope="col" className="whitespace-nowrap p-3 font-medium">Bucket date</th>
                 <th scope="col" className="p-3 font-medium">Operation</th>
                 <th scope="col" className="p-3 font-medium">Channel</th>
                 <th scope="col" className="p-3 text-right font-medium">Count</th>
@@ -76,7 +76,7 @@ export default function QuotaPage() {
               </tr></thead>
               <tbody>{usage.summaries.map((row, index) => (
                 <tr key={`${row.bucketStart}-${row.operation}-${row.channelId ?? "unassigned"}-${index}`} className="border-t border-line-soft text-dim transition-colors hover:bg-glass">
-                  <td className="p-3 font-mono text-fg">{formatBucket(row.bucketStart)}</td>
+                  <td className="whitespace-nowrap p-3 font-mono text-fg">{formatBucket(row.bucketStart)}</td>
                   <td className="p-3 font-mono text-sky">{row.operation}</td>
                   <td className="p-3 font-mono text-xs text-subtle">{formatChannelId(row.channelId)}</td>
                   <td className="p-3 text-right font-mono">{row.operationCount.toLocaleString()}</td>

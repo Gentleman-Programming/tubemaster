@@ -1,9 +1,11 @@
 export {
+  buildDayRange,
   buildMonthGrid,
   buildWeekView,
   composerHref,
   formatDayLabel,
   formatHourLabel,
+  nextSlotCell,
   shiftDays,
   shiftMonth,
   startOfWeek,
@@ -11,6 +13,7 @@ export {
   todayKey,
   zonedTimeToUtc,
 } from "./calendar";
+export type { SlotCell } from "./calendar";
 export type {
   CalendarItem,
   CalendarItemStatus,

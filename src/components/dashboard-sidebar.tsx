@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/cn";
 
 const links = [
@@ -14,8 +15,21 @@ const links = [
 
 /** Pure navigation list, rendered against an explicit pathname. */
 export function DashboardNav({ pathname }: { pathname: string | null }) {
+  const navRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const nav = navRef.current;
+    // Only the mobile horizontal scroller needs it; on desktop the list never overflows, so nothing moves.
+    if (!nav || nav.scrollWidth <= nav.clientWidth) return;
+    nav.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView({ inline: "center", block: "nearest" });
+  }, [pathname]);
+
   return (
-    <nav aria-label="Dashboard navigation" className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
+    <nav
+      ref={navRef}
+      aria-label="Dashboard navigation"
+      className="flex gap-1 overflow-x-auto mask-r-from-85% md:flex-col md:overflow-visible md:mask-none"
+    >
       {links.map(({ href, label }) => {
         const active = pathname === href;
         return (

@@ -184,3 +184,35 @@ test("loadCalendarData reports a session error when the social posts request is 
 
   assert.deepEqual(result, { kind: "error", message: "Session expired. Sign in again." });
 });
+
+function tabbableSlots(markup: string): { tabbable: string[]; total: number } {
+  const links = [...markup.matchAll(/<a[^>]*aria-label="New post on [^"]*"[^>]*>/g)].map(([tag]) => tag);
+  return {
+    tabbable: links.filter((tag) => /tabindex="0"/.test(tag)).map((tag) => /aria-label="([^"]*)"/.exec(tag)?.[1] ?? ""),
+    total: links.filter((tag) => /tabindex="-1"/.test(tag)).length + links.filter((tag) => /tabindex="0"/.test(tag)).length,
+  };
+}
+
+test("week view keeps a single empty slot in the tab order", () => {
+  const markup = renderToStaticMarkup(
+    <ScheduleCalendarContent
+      state={{ kind: "ready", data: { posts, videos, notice: null } }}
+      mode="week"
+      monthGrid={null}
+      week={buildWeekView({ anchor: "2026-10-21", timezone: NY, now: NOW, items })}
+      timezone={NY}
+      selectedId={null}
+    />,
+  );
+
+  const slots = tabbableSlots(markup);
+  assert.ok(slots.total > 50);
+  assert.deepEqual(slots.tabbable, ["New post on Wednesday, October 21, 2026 at 12:00"]);
+});
+
+test("month view keeps a single empty slot in the tab order", () => {
+  const slots = tabbableSlots(month());
+
+  assert.ok(slots.total > 5);
+  assert.deepEqual(slots.tabbable, ["New post on Wednesday, October 21, 2026 at 12:00"]);
+});

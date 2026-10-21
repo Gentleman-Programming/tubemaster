@@ -4,7 +4,9 @@ import type { PublishSlot } from "@/lib/youtube-best-publish-times/contracts";
 import {
   bestSlotHighlights,
   buildPickerMonth,
+  canShowPreviousMonth,
   composeLocalDateTime,
+  defaultTimeForDay,
   fetchBestSlots,
   initialScheduleFromQuery,
   parseLocalDateTime,
@@ -141,4 +143,24 @@ test("accepts a valid future calendar prefill only", () => {
   assert.equal(initialScheduleFromQuery("2026-10-22T09:00", "Not/AZone", now), null);
   assert.equal(initialScheduleFromQuery(null, "UTC", now), null);
   assert.equal(initialScheduleFromQuery("garbage", "UTC", now), null);
+});
+
+test("defaults a picked day to the next slot today, the first best slot, or 09:00", () => {
+  // now is 15:20 UTC: today defaults to the next 15-minute slot, never a past time.
+  assert.equal(defaultTimeForDay("2026-10-21", { now, timezone: "UTC" }), "15:30");
+  const highlights = bestSlotHighlights([slot("thursday", 18, 21), slot("wednesday", 20, 22)]);
+  assert.equal(defaultTimeForDay("2026-10-21", { now, timezone: "UTC", highlights }), "15:30");
+  assert.equal(defaultTimeForDay("2026-10-22", { now, timezone: "UTC", highlights }), "18:00");
+  assert.equal(defaultTimeForDay("2026-10-23", { now, timezone: "UTC", highlights }), "09:00");
+  assert.equal(defaultTimeForDay("2026-10-23", { now, timezone: "UTC" }), "09:00");
+});
+
+test("allows the previous month only while it still has a non-past day", () => {
+  assert.equal(canShowPreviousMonth({ year: 2026, month: 10 }, { now, timezone: "UTC" }), false);
+  assert.equal(canShowPreviousMonth({ year: 2026, month: 9 }, { now, timezone: "UTC" }), false);
+  assert.equal(canShowPreviousMonth({ year: 2026, month: 11 }, { now, timezone: "UTC" }), true);
+  // 2026-11-01T02:00Z is still Oct 31 in New York, so October is not entirely past there.
+  const early = new Date("2026-11-01T02:00:00.000Z");
+  assert.equal(canShowPreviousMonth({ year: 2026, month: 11 }, { now: early, timezone: "UTC" }), false);
+  assert.equal(canShowPreviousMonth({ year: 2026, month: 11 }, { now: early, timezone: "America/New_York" }), true);
 });
