@@ -6,6 +6,8 @@ import {
   serializeSelectedVideosCsv,
   serializeSelectedVideosJson,
 } from "@/lib/reporting/selected-video-export";
+import { cn } from "@/lib/cn";
+import { Button, Card, Input, Select, Textarea } from "@/components/ui";
 
 type Video = {
   videoId: string;
@@ -18,6 +20,20 @@ type Playlist = { id: string; title: string };
 
 type SubTab = "browse" | "batch";
 type Action = "add" | "remove";
+
+const segmentedGroupClasses = "flex gap-1 rounded-panel border border-line bg-surface p-1";
+
+function segmentClasses(active: boolean, tone: "rose" | "mint" | "danger" = "rose"): string {
+  const activeClasses = {
+    rose: "bg-rose text-canvas",
+    mint: "bg-mint text-canvas",
+    danger: "bg-danger text-canvas",
+  }[tone];
+  return cn(
+    "rounded-control px-3 py-1.5 font-mono text-xs font-medium transition-colors",
+    active ? activeClasses : "text-subtle hover:bg-glass-2 hover:text-fg",
+  );
+}
 
 export function ManualMode() {
   const [subTab, setSubTab] = useState<SubTab>("browse");
@@ -214,84 +230,74 @@ export function ManualMode() {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-1 rounded-lg bg-zinc-800/50 p-1">
+      <div className={segmentedGroupClasses}>
         <button
           onClick={() => setSubTab("browse")}
-          className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-            subTab === "browse"
-              ? "bg-zinc-700 text-white"
-              : "text-zinc-400 hover:text-zinc-200"
-          }`}
+          className={segmentClasses(subTab === "browse")}
         >
           Browse Videos
         </button>
         <button
           onClick={() => setSubTab("batch")}
-          className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-            subTab === "batch"
-              ? "bg-zinc-700 text-white"
-              : "text-zinc-400 hover:text-zinc-200"
-          }`}
+          className={segmentClasses(subTab === "batch")}
         >
           Batch (paste IDs)
         </button>
       </div>
 
-      <div className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+      <Card as="div" className="space-y-3">
         <div className="flex items-center justify-between">
-          <label className="text-xs font-medium text-zinc-400">
+          <label className="font-mono text-xs font-medium uppercase tracking-wider text-subtle">
             Target Playlist
           </label>
           <button
             onClick={() => setShowCreate(!showCreate)}
-            className="text-xs font-medium text-red-500 transition-colors hover:text-red-400"
+            className="rounded-control px-2 py-1 font-mono text-xs font-medium text-rose transition-colors hover:bg-glass-2 hover:text-pink"
           >
             {showCreate ? "Cancel" : "+ Create new"}
           </button>
         </div>
 
         {showCreate ? (
-          <div className="space-y-2 rounded-lg border border-zinc-700 bg-zinc-800/50 p-3">
-            <input
+          <div className="space-y-2 rounded-panel border border-line bg-glass p-3">
+            <Input
               type="text"
               value={newPlaylistName}
               onChange={(e) => setNewPlaylistName(e.target.value)}
               placeholder="New playlist name..."
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm placeholder:text-zinc-600"
             />
             <div className="flex items-center gap-2">
-              <select
+              <div className="w-36 shrink-0">
+              <Select
                 value={newPlaylistPrivacy}
                 onChange={(e) =>
                   setNewPlaylistPrivacy(
                     e.target.value as "private" | "public" | "unlisted"
                   )
                 }
-                className="rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-xs"
               >
                 <option value="private">Private</option>
                 <option value="unlisted">Unlisted</option>
                 <option value="public">Public</option>
-              </select>
-              <button
+              </Select>
+              </div>
+              <Button
                 onClick={handleCreatePlaylist}
                 disabled={creating || !newPlaylistName.trim()}
-                className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
               >
                 {creating ? "Creating..." : "Create Playlist"}
-              </button>
+              </Button>
             </div>
           </div>
         ) : (
           <>
-            <select
+            <Select
               value={playlistId}
               onChange={(e) => {
                 setPlaylistId(e.target.value);
                 setCustomPlaylist("");
               }}
               disabled={loadingPlaylists}
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm disabled:opacity-50"
             >
               <option value="">
                 {loadingPlaylists
@@ -303,15 +309,15 @@ export function ManualMode() {
                   {p.title}
                 </option>
               ))}
-            </select>
+            </Select>
 
-            <div className="flex items-center gap-2 text-xs text-zinc-500">
-              <span className="h-px flex-1 bg-zinc-800" />
+            <div className="flex items-center gap-2 font-mono text-xs text-muted">
+              <span className="h-px flex-1 bg-line" />
               <span>or paste Playlist ID/URL</span>
-              <span className="h-px flex-1 bg-zinc-800" />
+              <span className="h-px flex-1 bg-line" />
             </div>
 
-            <input
+            <Input
               type="text"
               value={customPlaylist}
               onChange={(e) => {
@@ -319,62 +325,51 @@ export function ManualMode() {
                 if (e.target.value.trim()) setPlaylistId("");
               }}
               placeholder="https://youtube.com/playlist?list=PL... or PLxxxxx"
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm placeholder:text-zinc-600"
+              className="font-mono"
             />
           </>
         )}
 
-        <div className="flex gap-1 rounded-lg bg-zinc-800/50 p-1">
+        <div className={segmentedGroupClasses}>
           <button
             onClick={() => setAction("add")}
-            className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-              action === "add"
-                ? "bg-green-600 text-white"
-                : "text-zinc-400 hover:text-zinc-200"
-            }`}
+            className={cn("flex-1", segmentClasses(action === "add", "mint"))}
           >
             Add to playlist
           </button>
           <button
             onClick={() => setAction("remove")}
-            className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-              action === "remove"
-                ? "bg-red-600 text-white"
-                : "text-zinc-400 hover:text-zinc-200"
-            }`}
+            className={cn("flex-1", segmentClasses(action === "remove", "danger"))}
           >
             Remove from playlist
           </button>
         </div>
 
-        <button
+        <Button
           onClick={handleSubmit}
           disabled={loading || activeCount === 0 || !hasPlaylist}
-          className={`w-full rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50 ${
-            action === "add"
-              ? "bg-green-600 hover:bg-green-700"
-              : "bg-red-600 hover:bg-red-700"
-          }`}
+          variant={action === "add" ? "primary" : "danger"}
+          className="w-full"
         >
           {loading
             ? action === "add"
               ? "Adding..."
               : "Removing..."
             : `${action === "add" ? "Add" : "Remove"} ${activeCount} video${activeCount !== 1 ? "s" : ""} ${action === "add" ? "to" : "from"} playlist`}
-        </button>
-      </div>
+        </Button>
+      </Card>
 
       {subTab === "batch" && (
         <div>
-          <textarea
+          <Textarea
             value={batchIds}
             onChange={(e) => setBatchIds(e.target.value)}
             placeholder={`Paste video IDs or URLs, one per line or comma-separated:\n\ndQw4w9WgXcQ\nhttps://youtube.com/watch?v=dQw4w9WgXcQ\nhttps://youtu.be/dQw4w9WgXcQ`}
             rows={8}
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 font-mono text-sm placeholder:text-zinc-600"
+            className="font-mono"
           />
           {batchIds && (
-            <p className="mt-2 text-xs text-zinc-500">
+            <p className="mt-2 font-mono text-xs text-subtle">
               {batchCount} valid video ID{batchCount !== 1 ? "s" : ""} detected
             </p>
           )}
@@ -383,36 +378,36 @@ export function ManualMode() {
 
       {subTab === "browse" && (
         <>
-          <div className="flex items-center gap-3">
-            <button
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              variant="secondary"
               onClick={fetchVideos}
               disabled={loadingVideos}
-              className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium transition-colors hover:bg-zinc-700 disabled:opacity-50"
             >
               {loadingVideos
                 ? "Loading all videos..."
                 : videos.length > 0
                   ? "Refresh"
                   : "Load My Videos"}
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => downloadSelection("json")}
               disabled={selectedLoadedVideos.length === 0}
-              className="rounded-lg bg-zinc-800 px-3 py-2 text-xs font-medium hover:bg-zinc-700 disabled:opacity-50"
             >
               Export JSON
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => downloadSelection("csv")}
               disabled={selectedLoadedVideos.length === 0}
-              className="rounded-lg bg-zinc-800 px-3 py-2 text-xs font-medium hover:bg-zinc-700 disabled:opacity-50"
             >
               Export CSV
-            </button>
+            </Button>
             {videos.length > 0 && (
-              <span className="text-sm text-zinc-400">
+              <span className="font-mono text-sm text-subtle">
                 {videos.length} total
                 {selected.size > 0 && ` · ${selected.size} selected`}
               </span>
@@ -420,30 +415,29 @@ export function ManualMode() {
           </div>
 
           {error && (
-            <div className="rounded-lg border border-red-900 bg-red-950/50 p-3 text-sm text-red-400">
+            <div className="rounded-panel border border-danger/30 bg-danger/10 p-3 text-sm text-danger">
               {error}
             </div>
           )}
 
           {videos.length > 0 && (
             <>
-              <input
+              <Input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by title..."
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm placeholder:text-zinc-600"
               />
 
-              <div className="rounded-xl border border-zinc-800 bg-zinc-900">
-                <div className="flex items-center gap-3 border-b border-zinc-800 px-4 py-3">
+              <div className="overflow-hidden rounded-card border border-line bg-surface-2">
+                <div className="flex items-center gap-3 border-b border-line bg-surface px-4 py-3">
                   <input
                     type="checkbox"
                     checked={allFilteredSelected}
                     onChange={toggleAllFiltered}
-                    className="h-4 w-4 rounded accent-red-600"
+                    className="h-4 w-4 rounded accent-rose"
                   />
-                  <span className="text-sm font-medium text-zinc-400">
+                  <span className="text-sm font-medium text-subtle">
                     {search
                       ? `Select all ${filteredVideos.length} filtered`
                       : "Select all"}
@@ -454,19 +448,19 @@ export function ManualMode() {
                   {filteredVideos.map((video) => (
                     <label
                       key={video.videoId}
-                      className="flex cursor-pointer items-center gap-3 border-b border-zinc-800/50 px-4 py-3 transition-colors hover:bg-zinc-800/50 last:border-b-0"
+                      className="flex cursor-pointer items-center gap-3 border-b border-line-soft px-4 py-3 transition-colors hover:bg-glass-2 last:border-b-0"
                     >
                       <input
                         type="checkbox"
                         checked={selected.has(video.videoId)}
                         onChange={() => toggleVideo(video.videoId)}
-                        className="h-4 w-4 shrink-0 rounded accent-red-600"
+                        className="h-4 w-4 shrink-0 rounded accent-rose"
                       />
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">
+                        <p className="truncate text-sm font-medium text-fg">
                           {video.title}
                         </p>
-                        <p className="text-xs text-zinc-500">
+                        <p className="font-mono text-xs text-muted">
                           {new Date(video.publishedAt).toLocaleDateString()}
                         </p>
                       </div>
@@ -480,8 +474,8 @@ export function ManualMode() {
       )}
 
       {result && (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-          <p className="text-sm font-medium text-green-500">
+        <div className="rounded-panel border border-mint/30 bg-mint/10 p-4">
+          <p className="font-mono text-sm font-medium text-mint">
             {result.added !== undefined
               ? `${result.added} video(s) added to playlist!`
               : `${result.removed} video(s) removed from playlist!`}

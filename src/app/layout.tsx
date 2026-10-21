@@ -14,7 +14,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "YouTube Playlist Manager",
+  title: "TubeMaster",
   description: "Automate your YouTube playlists with rules",
 };
 

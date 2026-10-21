@@ -14,6 +14,8 @@ import {
   type AnalyticsDateRange,
   type AnalyticsMetricDelta,
 } from "@/lib/youtube-analytics-summary/comparison";
+import { cn } from "@/lib/cn";
+import { Button, Card, EmptyState, Input } from "@/components/ui";
 
 type Preset = "7" | "30" | "90" | "custom";
 type DateRange = AnalyticsDateRange;
@@ -25,6 +27,22 @@ type AnalyticsComparisonResult = {
 
 const csvHeader = "date,views,likes,comments,estimatedMinutesWatched";
 const trafficSourceCsvHeader = "trafficSource,views,estimatedMinutesWatched";
+
+const tableHeadClasses = "bg-surface font-mono text-xs uppercase tracking-wider text-muted";
+const tableRowClasses = "font-mono text-dim transition-colors hover:bg-glass";
+
+function presetClasses(active: boolean): string {
+  return cn(
+    "rounded-control px-3 py-1.5 font-mono text-xs font-medium transition-colors",
+    active ? "bg-rose text-canvas shadow-button" : "text-dim hover:bg-glass-2 hover:text-fg",
+  );
+}
+
+function deltaToneClass(delta: AnalyticsMetricDelta): string {
+  if (delta.absolute > 0) return "text-mint";
+  if (delta.absolute < 0) return "text-danger";
+  return "text-subtle";
+}
 
 function formatDate(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -176,21 +194,24 @@ export function AnalyticsDashboard() {
     : [];
 
   return (
-    <section aria-labelledby="analytics-heading" className="space-y-5 rounded-xl border border-zinc-800 bg-zinc-950/40 p-5">
+    <Card aria-labelledby="analytics-heading" className="space-y-5">
       <div>
-        <h2 id="analytics-heading" className="text-xl font-semibold">Analytics</h2>
-        <p className="mt-1 text-sm text-zinc-400">Review daily channel performance for a selected period.</p>
+        <h2 id="analytics-heading" className="text-xl font-semibold text-fg">Analytics</h2>
+        <p className="mt-1 text-sm text-subtle">Review daily channel performance for a selected period.</p>
       </div>
 
       <div className="space-y-4">
-        <div className="flex flex-wrap gap-2" aria-label="Analytics period presets">
+        <div
+          className="inline-flex flex-wrap gap-1 rounded-panel border border-line bg-surface p-1"
+          aria-label="Analytics period presets"
+        >
           {(["7", "30", "90"] as const).map((value) => (
             <button
               key={value}
               type="button"
               aria-pressed={preset === value}
               onClick={() => selectPreset(value)}
-              className={`rounded-lg px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${preset === value ? "bg-white text-zinc-950" : "bg-zinc-900 text-zinc-300 hover:bg-zinc-800"}`}
+              className={presetClasses(preset === value)}
             >
               Last {value} days
             </button>
@@ -199,7 +220,7 @@ export function AnalyticsDashboard() {
             type="button"
             aria-pressed={preset === "custom"}
             onClick={() => setPreset("custom")}
-            className={`rounded-lg px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${preset === "custom" ? "bg-white text-zinc-950" : "bg-zinc-900 text-zinc-300 hover:bg-zinc-800"}`}
+            className={presetClasses(preset === "custom")}
           >
             Custom range
           </button>
@@ -213,76 +234,76 @@ export function AnalyticsDashboard() {
             void load({ startDate, endDate });
           }}
         >
-          <label className="flex flex-col gap-1 text-sm text-zinc-300">
+          <label className="flex flex-col gap-1 text-sm font-medium text-dim">
             From
-            <input type="date" value={startDate} max={endDate} onChange={(event) => setStartDate(event.target.value)} className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-white" />
+            <Input type="date" value={startDate} max={endDate} onChange={(event) => setStartDate(event.target.value)} className="font-mono" />
           </label>
-          <label className="flex flex-col gap-1 text-sm text-zinc-300">
+          <label className="flex flex-col gap-1 text-sm font-medium text-dim">
             To
-            <input type="date" value={endDate} max={formatDate(new Date())} onChange={(event) => setEndDate(event.target.value)} className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-white" />
+            <Input type="date" value={endDate} max={formatDate(new Date())} onChange={(event) => setEndDate(event.target.value)} className="font-mono" />
           </label>
-          <button type="submit" className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-            Apply range
-          </button>
+          <Button type="submit">Apply range</Button>
         </form>
       </div>
 
-      {loading && <p role="status" className="text-sm text-zinc-400">Loading analytics...</p>}
-      {errorMessage && <p role="alert" className="text-sm text-red-300">{errorMessage}</p>}
+      {loading && <p role="status" className="font-mono text-sm text-subtle">Loading analytics...</p>}
+      {errorMessage && <p role="alert" className="rounded-control border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{errorMessage}</p>}
 
       {comparison && totals && previousTotals && deltas && !loading && (
         <>
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 text-sm text-zinc-300">
-            Comparing {comparison.current.startDate}–{comparison.current.endDate} with {comparison.previous.startDate}–{comparison.previous.endDate}
+          <div className="rounded-panel border border-line-soft bg-glass px-4 py-3 text-sm text-dim">
+            Comparing <span className="font-mono text-fg">{comparison.current.startDate}–{comparison.current.endDate}</span> with <span className="font-mono text-fg">{comparison.previous.startDate}–{comparison.previous.endDate}</span>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {metricCards.map(([label, value, delta]) => (
-              <div key={label} className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
-                <p className="text-xs uppercase tracking-wide text-zinc-500">{label}</p>
-                <p className="mt-1 text-2xl font-semibold text-white">{value}</p>
-                <p className="mt-1 text-xs text-zinc-400">vs previous: {formatAnalyticsDelta(delta)}</p>
+              <div key={label} className="rounded-panel border border-line bg-surface p-4">
+                <p className="font-mono text-xs uppercase tracking-widest text-muted">{label}</p>
+                <p className="mt-2 font-mono text-2xl font-semibold text-fg">{value}</p>
+                <p className="mt-1 font-mono text-xs text-subtle">
+                  vs previous: <span className={deltaToneClass(delta)}>{formatAnalyticsDelta(delta)}</span>
+                </p>
               </div>
             ))}
           </div>
 
           <div className="flex items-center justify-between gap-3">
-            <h3 className="text-lg font-semibold">Daily detail</h3>
-            <button type="button" disabled={!comparison.current.days.length && !comparison.current.trafficSources.length} onClick={() => downloadCsv(comparison.current.days, comparison.current.trafficSources)} className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-200 hover:border-zinc-500 disabled:cursor-not-allowed disabled:opacity-50">
+            <h3 className="text-lg font-semibold text-fg">Daily detail</h3>
+            <Button variant="secondary" size="sm" disabled={!comparison.current.days.length && !comparison.current.trafficSources.length} onClick={() => downloadCsv(comparison.current.days, comparison.current.trafficSources)}>
               Export CSV
-            </button>
+            </Button>
           </div>
           {comparison.current.days.length ? (
-            <div className="overflow-x-auto rounded-lg border border-zinc-800">
+            <div className="overflow-x-auto rounded-panel border border-line">
               <table className="min-w-full text-left text-sm">
                 <caption className="sr-only">Daily analytics from {comparison.current.startDate} to {comparison.current.endDate}</caption>
-                <thead className="bg-zinc-900 text-xs uppercase text-zinc-500">
-                  <tr>{["Date", "Views", "Likes", "Comments", "Minutes watched"].map((heading) => <th key={heading} scope="col" className="px-4 py-3">{heading}</th>)}</tr>
+                <thead className={tableHeadClasses}>
+                  <tr>{["Date", "Views", "Likes", "Comments", "Minutes watched"].map((heading) => <th key={heading} scope="col" className="px-4 py-3 font-medium">{heading}</th>)}</tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-800">
-                  {comparison.current.days.map((day) => <tr key={day.date} className="text-zinc-300"><th scope="row" className="whitespace-nowrap px-4 py-3 font-medium text-white">{day.date}</th><td className="px-4 py-3">{day.views.toLocaleString()}</td><td className="px-4 py-3">{day.likes.toLocaleString()}</td><td className="px-4 py-3">{day.comments.toLocaleString()}</td><td className="px-4 py-3">{day.estimatedMinutesWatched.toLocaleString(undefined, { maximumFractionDigits: 1 })}</td></tr>)}
+                <tbody className="divide-y divide-line-soft">
+                  {comparison.current.days.map((day) => <tr key={day.date} className={tableRowClasses}><th scope="row" className="whitespace-nowrap px-4 py-3 font-medium text-fg">{day.date}</th><td className="px-4 py-3">{day.views.toLocaleString()}</td><td className="px-4 py-3">{day.likes.toLocaleString()}</td><td className="px-4 py-3">{day.comments.toLocaleString()}</td><td className="px-4 py-3">{day.estimatedMinutesWatched.toLocaleString(undefined, { maximumFractionDigits: 1 })}</td></tr>)}
                 </tbody>
               </table>
             </div>
-          ) : <p className="text-sm text-zinc-400">No analytics data for this period.</p>}
+          ) : <EmptyState title="No analytics data for this period." />}
 
           <div className="space-y-3">
-            <h3 className="text-lg font-semibold">Traffic sources</h3>
+            <h3 className="text-lg font-semibold text-fg">Traffic sources</h3>
             {trafficSources.length ? (
-              <div className="overflow-x-auto rounded-lg border border-zinc-800">
+              <div className="overflow-x-auto rounded-panel border border-line">
                 <table className="min-w-full text-left text-sm">
                   <caption className="sr-only">Traffic sources for the selected period</caption>
-                  <thead className="bg-zinc-900 text-xs uppercase text-zinc-500">
-                    <tr>{["Source", "Views", "Minutes watched", "vs previous"].map((heading) => <th key={heading} scope="col" className="px-4 py-3">{heading}</th>)}</tr>
+                  <thead className={tableHeadClasses}>
+                    <tr>{["Source", "Views", "Minutes watched", "vs previous"].map((heading) => <th key={heading} scope="col" className="px-4 py-3 font-medium">{heading}</th>)}</tr>
                   </thead>
-                  <tbody className="divide-y divide-zinc-800">
-                    {trafficSources.map((source) => <tr key={source.sourceType} className="text-zinc-300"><th scope="row" className="px-4 py-3 font-medium text-white">{source.sourceType}</th><td className="px-4 py-3">{source.views.toLocaleString()}</td><td className="px-4 py-3">{source.estimatedMinutesWatched.toLocaleString(undefined, { maximumFractionDigits: 1 })}</td><td className="px-4 py-3">{formatAnalyticsDelta(source.delta)}</td></tr>)}
+                  <tbody className="divide-y divide-line-soft">
+                    {trafficSources.map((source) => <tr key={source.sourceType} className={tableRowClasses}><th scope="row" className="px-4 py-3 font-medium text-fg">{source.sourceType}</th><td className="px-4 py-3">{source.views.toLocaleString()}</td><td className="px-4 py-3">{source.estimatedMinutesWatched.toLocaleString(undefined, { maximumFractionDigits: 1 })}</td><td className={cn("px-4 py-3", deltaToneClass(source.delta))}>{formatAnalyticsDelta(source.delta)}</td></tr>)}
                   </tbody>
                 </table>
               </div>
-            ) : <p className="text-sm text-zinc-400">No traffic-source data for this period.</p>}
+            ) : <EmptyState title="No traffic-source data for this period." />}
           </div>
         </>
       )}
-    </section>
+    </Card>
   );
 }

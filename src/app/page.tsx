@@ -36,7 +36,7 @@ export default function Home() {
         <div className="flex flex-col items-center gap-8 px-6 py-10 text-center sm:px-10 sm:py-14">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-fg sm:text-4xl">
-              YouTube Playlist Manager
+              TubeMaster
             </h1>
             <p className="mt-3 text-base text-subtle sm:text-lg">
               Create rules to automatically organize your videos into playlists

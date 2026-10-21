@@ -57,7 +57,7 @@ export function DashboardHeader() {
       <Card as="div" className="overflow-hidden p-0 shadow-glow">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line-soft px-5 py-4">
           <div className="min-w-0">
-            <p className="text-xl font-semibold text-fg">YouTube Playlist Manager</p>
+            <p className="text-xl font-semibold text-fg">TubeMaster</p>
             <p className="font-mono text-xs text-subtle">Welcome, {session?.user?.name}</p>
           </div>
           <Button variant="secondary" onClick={() => signOut()}>
