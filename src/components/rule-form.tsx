@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Button, CardTitle, Input, Label, Select } from "@/components/ui";
 
 type Playlist = { id: string; title: string };
 
@@ -48,71 +49,63 @@ export function RuleForm({ onCreated }: { onCreated: () => void }) {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
-    >
-      <h2 className="mb-4 text-lg font-semibold">New Rule</h2>
+    <form onSubmit={handleSubmit} className="rounded-card border border-line bg-surface-2 p-5">
+      <CardTitle className="mb-4">New Rule</CardTitle>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <label className="mb-1 block text-sm font-medium">Rule Name</label>
-          <input
+          <Label className="mb-1 block">Rule Name</Label>
+          <Input
             type="text"
             required
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             placeholder='e.g. "Podcasts to playlist"'
-            className="w-full rounded-lg border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium">Match Field</label>
-          <select
+          <Label className="mb-1 block">Match Field</Label>
+          <Select
             value={form.matchField}
             onChange={(e) => setForm({ ...form, matchField: e.target.value })}
-            className="w-full rounded-lg border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
           >
             <option value="title">Title</option>
             <option value="description">Description</option>
-          </select>
+          </Select>
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium">Match Type</label>
-          <select
+          <Label className="mb-1 block">Match Type</Label>
+          <Select
             value={form.matchType}
             onChange={(e) => setForm({ ...form, matchType: e.target.value })}
-            className="w-full rounded-lg border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
           >
             <option value="contains">Contains</option>
             <option value="startsWith">Starts With</option>
             <option value="endsWith">Ends With</option>
             <option value="equals">Equals</option>
-          </select>
+          </Select>
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium">Match Value</label>
-          <input
+          <Label className="mb-1 block">Match Value</Label>
+          <Input
             type="text"
             required
             value={form.matchValue}
             onChange={(e) => setForm({ ...form, matchValue: e.target.value })}
             placeholder='e.g. "Podcast"'
-            className="w-full rounded-lg border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium">
+          <Label className="mb-1 block">
             Target Playlist
-          </label>
-          <select
+          </Label>
+          <Select
             required
             value={form.playlistId}
             onChange={(e) => setForm({ ...form, playlistId: e.target.value })}
-            className="w-full rounded-lg border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
           >
             <option value="">Select a playlist...</option>
             {playlists.map((p) => (
@@ -120,17 +113,13 @@ export function RuleForm({ onCreated }: { onCreated: () => void }) {
                 {p.title}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       </div>
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
-      >
+      <Button type="submit" disabled={loading} className="mt-4">
         {loading ? "Creating..." : "Create Rule"}
-      </button>
+      </Button>
     </form>
   );
 }

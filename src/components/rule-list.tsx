@@ -1,5 +1,7 @@
 "use client";
 
+import { Button, EmptyState } from "@/components/ui";
+
 type Rule = {
   id: number;
   name: string;
@@ -19,9 +21,7 @@ export function RuleList({
 }) {
   if (rules.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-zinc-300 p-8 text-center text-sm text-zinc-500 dark:border-zinc-700">
-        No rules yet. Create one above to get started.
-      </div>
+      <EmptyState title="No rules yet. Create one above to get started." />
     );
   }
 
@@ -30,29 +30,26 @@ export function RuleList({
       {rules.map((rule) => (
         <div
           key={rule.id}
-          className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+          className="flex items-center justify-between gap-4 rounded-panel border border-line bg-surface-2 p-4 transition-colors hover:border-rose/30"
         >
           <div>
-            <p className="font-medium">{rule.name}</p>
-            <p className="text-sm text-zinc-500">
+            <p className="font-medium text-fg">{rule.name}</p>
+            <p className="mt-1 text-sm text-subtle">
               If{" "}
-              <span className="font-mono text-zinc-700 dark:text-zinc-300">
+              <span className="font-mono text-sky">
                 {rule.matchField}
               </span>{" "}
-              <span className="text-zinc-400">{rule.matchType}</span>{" "}
-              <span className="font-mono text-red-600 dark:text-red-400">
+              <span className="font-mono text-muted">{rule.matchType}</span>{" "}
+              <span className="font-mono text-rose">
                 &quot;{rule.matchValue}&quot;
               </span>{" "}
               → add to{" "}
-              <span className="font-semibold">{rule.playlistTitle}</span>
+              <span className="font-semibold text-fg">{rule.playlistTitle}</span>
             </p>
           </div>
-          <button
-            onClick={() => onDelete(rule.id)}
-            className="rounded-lg px-3 py-1 text-sm text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-950"
-          >
+          <Button variant="danger" size="sm" onClick={() => onDelete(rule.id)}>
             Delete
-          </button>
+          </Button>
         </div>
       ))}
     </div>
