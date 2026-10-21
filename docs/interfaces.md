@@ -160,6 +160,12 @@ All routes are App Router handlers and require authenticated session user.
 - `GET /api/youtube/best-publish-times?timezone=<IANA>`
   - Read-only estimate of the best weekday/3-hour publish slots from the channel's own recent uploads; requires `https://www.googleapis.com/auth/yt-analytics.readonly` and never publishes or schedules anything.
 
+### Scheduled YouTube videos API
+
+- `GET /api/youtube/scheduled`
+  - Read-only list of the session user's 50 most recent uploads that are private and have a scheduled `publishAt`: `{ kind: "youtube-scheduled-videos", videos: [{ videoId, title, publishAt, thumbnailUrl? }] }`, sorted by `publishAt`. Used by the Calendar page.
+  - Requires `https://www.googleapis.com/auth/youtube.readonly`. Errors: `AUTH_REQUIRED` (401), `AUTH_SCOPE_INSUFFICIENT` (403), `YOUTUBE_API_ERROR` (502). Each call records estimated `channels.list`, `playlistItems.list` and `videos.list` quota.
+
 ### Quota usage API
 
 - `GET /api/quota/usage`
