@@ -22,6 +22,7 @@ test("DashboardNav keeps the navigation landmark and the links in order", () => 
       ["/dashboard/upload", "Private upload"],
       ["/dashboard/quota", "Quota usage"],
       ["/dashboard/social", "Social publishing"],
+      ["/dashboard/calendar", "Calendar"],
     ],
   );
 });

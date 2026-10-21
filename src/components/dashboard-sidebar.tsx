@@ -9,6 +9,7 @@ const links = [
   { href: "/dashboard/upload", label: "Private upload" },
   { href: "/dashboard/quota", label: "Quota usage" },
   { href: "/dashboard/social", label: "Social publishing" },
+  { href: "/dashboard/calendar", label: "Calendar" },
 ];
 
 /** Pure navigation list, rendered against an explicit pathname. */
