@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { access, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -17,6 +18,7 @@ import { createSocialWorker, type SocialWorkerDeps, type WorkerTimers } from "..
 const SECRET = "test-nextauth-secret-value";
 const START = Date.parse("2026-10-21T12:00:00.000Z");
 const MINUTE = 60_000;
+const CONFIRMED_SHA256 = createHash("sha256").update("video-bytes").digest("hex");
 
 type PublishCall = { request: SocialPublishRequest; snapshotBytes: string; snapshotMode: number; dirMode: number };
 
@@ -67,8 +69,17 @@ async function setup(t: test.TestContext) {
   );
   const logs: string[] = [];
 
-  async function schedule(overrides: { userId?: string; accountId?: string; platform?: SocialPlatform; at?: number; stagingFile?: string } = {}) {
-    return storage.insertPost({
+  async function schedule(
+    overrides: {
+      userId?: string;
+      accountId?: string;
+      platform?: SocialPlatform;
+      at?: number;
+      stagingFile?: string;
+      confirmedSha256?: string | null;
+    } = {},
+  ) {
+    const inserted = await storage.insertPost({
       userId: overrides.userId ?? "user-1",
       accountId: overrides.accountId ?? account.id,
       platform: overrides.platform ?? "tiktok",
@@ -79,6 +90,12 @@ async function setup(t: test.TestContext) {
       timezone: "America/Argentina/Buenos_Aires",
       status: "scheduled",
     });
+    // Mirrors confirm(): a scheduled post carries the hash of the bytes the user confirmed.
+    const confirmedSha256 = overrides.confirmedSha256 === undefined ? CONFIRMED_SHA256 : overrides.confirmedSha256;
+    if (confirmedSha256 !== null) {
+      assert.ok(await storage.transitionPost(inserted.id, ["scheduled"], "scheduled", { confirmedSha256 }));
+    }
+    return inserted;
   }
 
   function worker(overrides: Partial<SocialWorkerDeps> = {}) {
@@ -128,6 +145,39 @@ test("publishes a due post once from a private snapshot and removes the snapshot
   assert.equal(stored?.publishedAt, new Date(START).toISOString());
   assert.equal(stored?.error, undefined);
   assert.ok(ctx.logs.every((line) => !line.includes("access-1") && !line.includes("refresh-1")));
+});
+
+test("a staged file overwritten after confirmation fails STAGED_VIDEO_CHANGED and is never published", async (t) => {
+  const ctx = await setup(t);
+  const { publisher, calls } = fakePublisher("tiktok");
+  const scheduled = await ctx.schedule();
+  // Same size as the confirmed bytes, so only the content hash can detect the change.
+  await writeFile(join(ctx.stagingRoot, "clip.mp4"), "video-BYTES");
+
+  await ctx.worker({ publishers: { tiktok: publisher } }).tick();
+
+  assert.equal(calls.length, 0);
+  const stored = await ctx.post(scheduled.id);
+  assert.equal(stored?.status, "failed");
+  assert.deepEqual(stored?.error, {
+    code: "STAGED_VIDEO_CHANGED",
+    message: "The video file changed after confirmation; preview and confirm again.",
+  });
+  assert.deepEqual(await snapshotDirs(ctx.stagingRoot), []);
+});
+
+test("a scheduled post without a confirmed hash fails STAGED_VIDEO_CHANGED and is never published", async (t) => {
+  const ctx = await setup(t);
+  const { publisher, calls } = fakePublisher("tiktok");
+  const scheduled = await ctx.schedule({ confirmedSha256: null });
+
+  await ctx.worker({ publishers: { tiktok: publisher } }).tick();
+
+  assert.equal(calls.length, 0);
+  const stored = await ctx.post(scheduled.id);
+  assert.equal(stored?.status, "failed");
+  assert.equal(stored?.error?.code, "STAGED_VIDEO_CHANGED");
+  assert.deepEqual(await snapshotDirs(ctx.stagingRoot), []);
 });
 
 test("leaves posts that are not due yet untouched", async (t) => {

@@ -27,8 +27,9 @@ export type QueueResult<T> = { ok: true; value: T } | { ok: false; error: QueueE
 const CONFIRMATION_TTL_SECONDS = 600;
 /** S3: the worker marks a post missed after this delay, so an older time can no longer be confirmed. */
 export const MISSED_GRACE_MS = 5 * 60_000;
-const CANCELLABLE: SocialPostStatus[] = ["draft", "scheduled", "missed"];
-const RESCHEDULABLE: SocialPostStatus[] = ["scheduled", "missed"];
+// A failed post is never retried automatically (S8); the user may reschedule it with a new confirmation or cancel it.
+const CANCELLABLE: SocialPostStatus[] = ["draft", "scheduled", "failed", "missed"];
+const RESCHEDULABLE: SocialPostStatus[] = ["scheduled", "failed", "missed"];
 
 const timezoneSchema = z.string().min(1).refine((value) => {
   try {
@@ -206,7 +207,8 @@ export function createSocialQueueService(deps: SocialQueueDeps) {
     if (Date.parse(post.scheduledAtUtc) < now().getTime() - MISSED_GRACE_MS) {
       return fail("INVALID_STATE", "The scheduled time passed more than 5 minutes ago; reschedule the post");
     }
-    if (!(await storage.transitionPost(post.id, ["draft"], "scheduled"))) {
+    // The verified hash is stored with the transition so the worker uploads only these confirmed bytes.
+    if (!(await storage.transitionPost(post.id, ["draft"], "scheduled", { confirmedSha256: video.sha256 }))) {
       return fail("INVALID_STATE", "The post changed while confirming; reload it");
     }
     return found(post.userId, post.id);
@@ -227,7 +229,11 @@ export function createSocialQueueService(deps: SocialQueueDeps) {
     const video = await stagedVideo(post.stagingFile);
     if (!video) return fail("STAGED_VIDEO_INVALID", "The staged video is missing or invalid");
 
-    const moved = await storage.transitionPost(post.id, RESCHEDULABLE, "draft", { ...schedule.value, error: null });
+    const moved = await storage.transitionPost(post.id, RESCHEDULABLE, "draft", {
+      ...schedule.value,
+      error: null,
+      confirmedSha256: null,
+    });
     if (!moved) return fail("INVALID_STATE", "The post changed while rescheduling; reload it");
     const updated = await storage.getPost(post.userId, post.id);
     if (!updated) return fail("NOT_FOUND", "Post not found");

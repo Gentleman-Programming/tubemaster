@@ -50,7 +50,8 @@ const SOCIAL_DDL = [
     error_message TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    published_at TEXT
+    published_at TEXT,
+    confirmed_sha256 TEXT
   )`,
   `CREATE INDEX IF NOT EXISTS idx_social_posts_status_scheduled
     ON social_posts (status, scheduled_at_utc)`,
@@ -63,6 +64,12 @@ const SOCIAL_DDL = [
 export async function initializeSocialTables(client: SqlClient): Promise<void> {
   for (const statement of SOCIAL_DDL) {
     await client.execute(statement);
+  }
+  // Migration: add confirmed_sha256 to tables created before it existed (idempotent)
+  try {
+    await client.execute("ALTER TABLE social_posts ADD COLUMN confirmed_sha256 TEXT");
+  } catch (error) {
+    if (!/duplicate column/i.test(error instanceof Error ? error.message : String(error))) throw error;
   }
 }
 
@@ -114,6 +121,8 @@ function toPost(row: Row): SocialPost {
   }
   const publishedAt = optionalString(row.published_at);
   if (publishedAt !== undefined) post.publishedAt = publishedAt;
+  const confirmedSha256 = optionalString(row.confirmed_sha256);
+  if (confirmedSha256 !== undefined) post.confirmedSha256 = confirmedSha256;
   return post;
 }
 
@@ -309,6 +318,7 @@ export function createSocialStorage({ client, secret, now = () => new Date() }: 
     if (patch.publishedAt !== undefined) set("published_at", patch.publishedAt);
     if (patch.scheduledAtUtc !== undefined) set("scheduled_at_utc", patch.scheduledAtUtc);
     if (patch.timezone !== undefined) set("timezone", patch.timezone);
+    if (patch.confirmedSha256 !== undefined) set("confirmed_sha256", patch.confirmedSha256);
     if (patch.error !== undefined) {
       set("error_code", patch.error?.code ?? null);
       set("error_message", patch.error?.message ?? null);

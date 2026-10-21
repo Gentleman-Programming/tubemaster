@@ -67,9 +67,9 @@ test("renders posts with status, time, errors and allowed actions", () => {
   assert.match(html, /Publishing was interrupted\./);
   assert.match(html, /Oct 22, 2026, 18:30 \(America\/Argentina\/Buenos_Aires\)/);
   assert.match(html, /Reel caption/);
-  // scheduled + missed can be cancelled and rescheduled; failed and published cannot.
-  assert.equal(html.match(/>Cancel</g)?.length, 2);
-  assert.equal(html.match(/>Reschedule</g)?.length, 2);
+  // scheduled, missed and failed can be cancelled and rescheduled; published cannot.
+  assert.equal(html.match(/>Cancel</g)?.length, 3);
+  assert.equal(html.match(/>Reschedule</g)?.length, 3);
 });
 
 test("renders empty, loading and error states", () => {

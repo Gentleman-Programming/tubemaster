@@ -55,8 +55,8 @@ export function postStatusBadge(status: SocialPostStatus): PostStatusBadge {
 }
 
 // Mirrors the queue service rules (S8); the server enforces them again.
-const CANCELLABLE: readonly SocialPostStatus[] = ["draft", "scheduled", "missed"];
-const RESCHEDULABLE: readonly SocialPostStatus[] = ["scheduled", "missed"];
+const CANCELLABLE: readonly SocialPostStatus[] = ["draft", "scheduled", "failed", "missed"];
+const RESCHEDULABLE: readonly SocialPostStatus[] = ["scheduled", "failed", "missed"];
 
 export const canCancelPost = (status: SocialPostStatus) => CANCELLABLE.includes(status);
 export const canReschedulePost = (status: SocialPostStatus) => RESCHEDULABLE.includes(status);

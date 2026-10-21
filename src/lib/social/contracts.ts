@@ -53,11 +53,13 @@ export type SocialPost = {
   createdAt: string;
   updatedAt: string;
   publishedAt?: string;
+  /** sha256 of the staged video bytes verified at confirmation; the worker refuses to upload anything else (S4). */
+  confirmedSha256?: string | null;
 };
 
 export type NewSocialPost = Omit<
   SocialPost,
-  "id" | "createdAt" | "updatedAt" | "externalPostId" | "error" | "publishedAt"
+  "id" | "createdAt" | "updatedAt" | "externalPostId" | "error" | "publishedAt" | "confirmedSha256"
 >;
 
 export type SocialPostFilter = {
@@ -73,6 +75,7 @@ export type SocialPostTransitionPatch = {
   publishedAt?: string | null;
   scheduledAtUtc?: string;
   timezone?: string;
+  confirmedSha256?: string | null;
 };
 
 export function isSocialPlatform(value: unknown): value is SocialPlatform {

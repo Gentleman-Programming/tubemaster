@@ -242,6 +242,62 @@ test("transitionPost changes status only from the allowed statuses", async () =>
   client.close();
 });
 
+test("transitionPost stores and clears the confirmed video hash", async () => {
+  const { client, storage } = await setup();
+  const post = await storage.insertPost(newPost("user-1", "account-1", { status: "draft" }));
+  assert.equal(post.confirmedSha256, undefined);
+  const sha256 = "a".repeat(64);
+
+  assert.equal(await storage.transitionPost(post.id, ["draft"], "scheduled", { confirmedSha256: sha256 }), true);
+  assert.equal((await storage.getPost("user-1", post.id))?.confirmedSha256, sha256);
+  assert.equal(await storage.transitionPost(post.id, ["scheduled"], "publishing"), true);
+  assert.equal((await storage.getPost("user-1", post.id))?.confirmedSha256, sha256, "transitions without the field keep it");
+
+  assert.equal(await storage.transitionPost(post.id, ["publishing"], "draft", { confirmedSha256: null }), true);
+  assert.equal((await storage.getPost("user-1", post.id))?.confirmedSha256, undefined);
+  client.close();
+});
+
+test("initializeSocialTables adds confirmed_sha256 to an existing social_posts table, idempotently", async () => {
+  const client = createClient({ url: ":memory:" });
+  // Shape of social_posts before the confirmed_sha256 column existed.
+  await client.execute(`CREATE TABLE social_posts (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    account_id TEXT NOT NULL,
+    platform TEXT NOT NULL,
+    staging_file TEXT NOT NULL,
+    caption TEXT NOT NULL,
+    platform_options TEXT NOT NULL DEFAULT '{}',
+    scheduled_at_utc TEXT NOT NULL,
+    timezone TEXT NOT NULL,
+    status TEXT NOT NULL,
+    external_post_id TEXT,
+    error_code TEXT,
+    error_message TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    published_at TEXT
+  )`);
+  await client.execute(`INSERT INTO social_posts
+    (id, user_id, account_id, platform, staging_file, caption, scheduled_at_utc, timezone, status, created_at, updated_at)
+    VALUES ('old-post', 'user-1', 'account-1', 'tiktok', 'clip.mp4', 'Old', '2026-10-22T15:00:00.000Z', 'UTC', 'scheduled',
+      '2026-10-20T00:00:00.000Z', '2026-10-20T00:00:00.000Z')`);
+
+  await initializeSocialTables(client);
+  await initializeSocialTables(client);
+
+  const columns = (await client.execute("PRAGMA table_info(social_posts)")).rows.map((row) => String(row.name));
+  assert.equal(columns.filter((name) => name === "confirmed_sha256").length, 1);
+  const storage = createSocialStorage({ client, secret: SECRET, now: () => FIXED_NOW });
+  const existing = await storage.getPost("user-1", "old-post");
+  assert.equal(existing?.status, "scheduled");
+  assert.equal(existing?.confirmedSha256, undefined);
+  assert.equal(await storage.transitionPost("old-post", ["scheduled"], "scheduled", { confirmedSha256: "b".repeat(64) }), true);
+  assert.equal((await storage.getPost("user-1", "old-post"))?.confirmedSha256, "b".repeat(64));
+  client.close();
+});
+
 test("unknown statuses and platforms are rejected", async () => {
   const { client, storage } = await setup();
   const post = await storage.insertPost(newPost("user-1", "account-1"));
