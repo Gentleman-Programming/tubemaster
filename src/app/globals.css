@@ -1,26 +1,73 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Dark-only theme based on the gentlemanprogramming.com design language. */
+@theme {
+  /* Backgrounds */
+  --color-canvas: #1a1218;
+  --color-surface: #20161e;
+  --color-surface-2: #241822;
+  --color-surface-3: #342230;
+  --color-panel: #000000;
+  --color-glass: #ffffff07;
+  --color-glass-2: #ffffff0d;
+
+  /* Text */
+  --color-fg: #f6eff3;
+  --color-subtle: #a78e9b;
+  --color-muted: #76616b;
+  --color-dim: #b99aa9;
+
+  /* Accents */
+  --color-rose: #f095c8;
+  --color-pink: #ffb1dd;
+  --color-hot: #ff76c3;
+  --color-sky: #a9c7ee;
+  --color-mint: #b4e7c7;
+  --color-peach: #f2b86d;
+  --color-danger: #ff718f;
+  --color-warn: #e0c27a;
+  --color-mauve: #d7a0b8;
+
+  /* Borders */
+  --color-line: #ffffff17;
+  --color-line-soft: #ffffff0f;
+
+  /* Radius: small 8px, medium 12px, large 16px (Tailwind's sm/md/lg keep their defaults). */
+  --radius-control: 8px;
+  --radius-panel: 12px;
+  --radius-card: 16px;
+  --radius-full: 999px;
+
+  --shadow-glow: 0 30px 60px #00000059, 0 0 40px #f095c81a;
+  --shadow-button: 0 8px 20px #f095c847;
 }
 
+/* Font variables come from next/font in the root layout. */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Iosevka Term", var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: dark;
   }
-}
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-rose);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: #f095c84d;
+    color: var(--color-fg);
+  }
 }
