@@ -102,7 +102,7 @@ Run `node --import tsx src/cli/quota.ts usage [--bucketStart YYYY-MM-DD] [--oper
 
 ## MCP server (`npm run mcp:video-metadata`)
 
-Starts stdio MCP server with tools for auth context + metadata + playlists.
+Starts stdio MCP server with tools for auth context + metadata + playlists + social publishing.
 
 Important: MCP server does **not** expose login flow. Authenticate first using CLI (`auth login`).
 
@@ -118,6 +118,14 @@ Key MCP tools:
   - `list`, `transcript`, `preview`, `apply`
 - Best publish times tool:
   - `best_publish_times` — read-only estimate from the channel's own past uploads; `timezone` (IANA) required; needs `yt-analytics.readonly`; never publishes or schedules
+- Social publishing tools (Instagram/TikTok; accounts are connected once in the web app, see [Using it from MCP](./social-publishing.md#using-it-from-mcp)):
+  - `social_accounts` — connected accounts (public fields only, never tokens) and platforms configured in env
+  - `social_stage_video` — copies an absolute local video path (regular mp4/mov/webm/mkv file, no symlinks, size-limited) into staging; returns `stagingFile` and `size`; the source is never modified
+  - `social_preview` — creates a draft and returns the preview plus a 10-minute `confirmationToken`; does not publish
+  - `social_confirm` — `postId` + `confirmationToken`; schedules/publishes irreversibly; call only after the human approved the shown preview; the web app must be running for the worker to publish
+  - `social_queue` — lists posts, optional `status` filter
+  - `social_cancel` — cancels a draft, scheduled, failed or missed post
+  - `social_reschedule` — `postId` + `schedule`; returns the post to draft with a new preview and token that need a new confirmation
 - Playlist tools:
   - `playlist_list`, `playlist_create`, `playlist_update`, `playlist_delete`
   - `playlist_add_videos`, `playlist_remove_videos`
@@ -160,6 +168,19 @@ All routes are App Router handlers and require authenticated session user.
   - Explicit channel IDs must be non-empty and contain only letters, numbers, `_`, or `-`.
   - Results always use the authenticated session user; scope overrides are rejected.
   - Values are estimated recorded usage, not authoritative remaining YouTube quota.
+
+### Social publishing API
+
+Session-authenticated; setup in [social-publishing.md](./social-publishing.md). Errors return `{ error: <CODE>, message }`.
+
+- `GET /api/social/accounts` — connected accounts (no tokens); `DELETE /api/social/accounts?platform=<tiktok|instagram>` disconnects.
+- `GET /api/social/tiktok/connect`, `GET /api/social/instagram/connect` — start OAuth (full-page navigation); callbacks redirect to `/dashboard/social?connected=<platform>` or `?error=<code>`.
+- `GET /api/social/posts[?status=<status>]` — list posts.
+- `POST /api/social/posts` — create a draft and return its preview plus `confirmationToken`; nothing is published.
+- `GET /api/social/posts/<id>` — one post.
+- `POST /api/social/posts/<id>/confirm` — `{ confirmationToken }`; schedules the draft.
+- `POST /api/social/posts/<id>/reschedule` — `{ schedule }`; returns the post to draft with a new preview and token.
+- `POST /api/social/posts/<id>/cancel` — cancel a draft, scheduled or missed post.
 
 ### Playlist / video API used by UI
 

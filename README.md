@@ -28,9 +28,9 @@ Full walkthrough: **[docs/getting-started.md](docs/getting-started.md)**. The de
 
 | Interface | Entry point | Current scope |
 | --- | --- | --- |
-| Web UI | `http://localhost:3102` | Browse/select/export videos, playlist actions, rules, estimated quota usage, read-only best publish times panel |
+| Web UI | `http://localhost:3102` | Browse/select/export videos, playlist actions, rules, estimated quota usage, read-only best publish times panel, social publishing to Instagram and TikTok (preview + confirm, scheduling) |
 | CLI | `npm run cli:video-metadata -- <command>` | Auth/channel context, metadata and transcript workflows, playlists, read-only `best-times --timezone <IANA>`; quota has a separate command |
-| MCP Server (stdio) | `npm run mcp:video-metadata` | Context, metadata, transcripts, playlists, read-only `best_publish_times` (`timezone` required); no login or registered quota tool |
+| MCP Server (stdio) | `npm run mcp:video-metadata` | Context, metadata, transcripts, playlists, read-only `best_publish_times` (`timezone` required), Instagram/TikTok publishing (`social_*`: stage → preview → human approval → confirm; [guide](docs/social-publishing.md#using-it-from-mcp)); no login or registered quota tool |
 | API Route Handlers | `/api/youtube/videos`, `/api/video-metadata/*`, `/api/youtube/best-publish-times` | Session-authenticated UI operations, metadata/transcripts, estimated quota usage |
 
 Detailed usage by interface: **[docs/interfaces.md](docs/interfaces.md)**
@@ -101,6 +101,7 @@ Troubleshooting these guardrails and auth errors: **[docs/troubleshooting.md](do
 - **Roadmap and future Shorts proposal:** [docs/roadmap.md](docs/roadmap.md)
 - **Getting started (Google Cloud + local setup):** [docs/getting-started.md](docs/getting-started.md)
 - **Web UI, CLI, MCP, API usage:** [docs/interfaces.md](docs/interfaces.md)
+- **Social publishing setup (Instagram, TikTok):** [docs/social-publishing.md](docs/social-publishing.md)
 - **Common auth/API/env errors and fixes:** [docs/troubleshooting.md](docs/troubleshooting.md)
 
 ## Contributing

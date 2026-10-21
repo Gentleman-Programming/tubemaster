@@ -1295,29 +1295,363 @@ test("MCP best_publish_times surfaces core errors with the structured error enve
   });
 });
 
-test("MCP server registers best_publish_times alongside the existing tools", () => {
+const TOOLS_BEFORE_SOCIAL = [
+  "apply",
+  "auth_user_select",
+  "best_publish_times",
+  "list",
+  "playlist_add_videos",
+  "playlist_create",
+  "playlist_delete",
+  "playlist_list",
+  "playlist_remove_videos",
+  "playlist_update",
+  "preview",
+  "transcript",
+  "whoami",
+  "write_channel_list",
+  "write_channel_select",
+  "write_context",
+];
+
+const SOCIAL_TOOLS = [
+  "social_accounts",
+  "social_cancel",
+  "social_confirm",
+  "social_preview",
+  "social_queue",
+  "social_reschedule",
+  "social_stage_video",
+];
+
+test("MCP server registers exactly the previous tools plus the seven social tools", () => {
   const server = createMcpServer({
     ...makeCoreStub(),
     fetchBestPublishTimes: async () => bestPublishTimesResult,
   });
   const tools = (server as unknown as { _registeredTools?: Record<string, unknown> })._registeredTools;
 
-  assert.deepEqual(Object.keys(tools ?? {}).sort(), [
-    "apply",
-    "auth_user_select",
-    "best_publish_times",
-    "list",
-    "playlist_add_videos",
-    "playlist_create",
-    "playlist_delete",
-    "playlist_list",
-    "playlist_remove_videos",
-    "playlist_update",
-    "preview",
-    "transcript",
-    "whoami",
-    "write_channel_list",
-    "write_channel_select",
-    "write_context",
+  assert.deepEqual(Object.keys(tools ?? {}).sort(), [...TOOLS_BEFORE_SOCIAL, ...SOCIAL_TOOLS].sort());
+});
+
+test("MCP social tool descriptions state the preview/confirm boundary", () => {
+  const server = createMcpServer(makeCoreStub());
+  const tools = (server as unknown as { _registeredTools?: Record<string, { description?: string }> })._registeredTools ?? {};
+
+  const preview = tools.social_preview?.description ?? "";
+  assert.match(preview, /does NOT publish/);
+  assert.match(preview, /explicit human approval/i);
+  const confirm = tools.social_confirm?.description ?? "";
+  assert.match(confirm, /irreversibl/i);
+  assert.match(confirm, /explicitly approved/i);
+  assert.match(confirm, /web app must be running/i);
+});
+
+// --- Social publishing tools (S12) ---
+
+const SOCIAL_POST = {
+  id: "post-1",
+  userId: "active-user",
+  accountId: "acc-1",
+  platform: "tiktok" as const,
+  stagingFile: "clip.mp4",
+  caption: "New video",
+  platformOptions: { privacyLevel: "SELF_ONLY" },
+  scheduledAtUtc: "2026-10-22T13:00:00.000Z",
+  timezone: "America/Argentina/Buenos_Aires",
+  status: "draft" as const,
+  createdAt: "2026-10-21T12:00:00.000Z",
+  updatedAt: "2026-10-21T12:00:00.000Z",
+};
+
+const SOCIAL_PREVIEW = {
+  post: SOCIAL_POST,
+  scheduledAtUtc: SOCIAL_POST.scheduledAtUtc,
+  account: { id: "acc-1", platform: "tiktok" as const, displayName: "@gentleman" },
+  video: { stagingFile: "clip.mp4", size: 11 },
+  confirmationToken: `1792000000.${"a".repeat(64)}`,
+  confirmationExpiresAt: "2026-10-21T12:10:00.000Z",
+};
+
+const SOCIAL_ACCOUNT = {
+  id: "acc-1",
+  userId: "active-user",
+  platform: "tiktok" as const,
+  externalAccountId: "tt-1",
+  displayName: "@gentleman",
+  scopes: ["video.publish"],
+  tokenExpiresAt: null,
+  connectedAt: "2026-10-21T12:00:00.000Z",
+};
+
+function makeSocialStub(overrides: Partial<Record<string, (input: unknown) => Promise<unknown>>> = {}) {
+  const calls: Array<{ method: string; input: unknown }> = [];
+  const record = (method: string, result: unknown) => async (input: unknown) => {
+    calls.push({ method, input });
+    return overrides[method] ? overrides[method](input) : result;
+  };
+  const queue = {
+    preview: record("preview", { ok: true, value: SOCIAL_PREVIEW }),
+    confirm: record("confirm", { ok: true, value: { ...SOCIAL_POST, status: "scheduled" } }),
+    reschedule: record("reschedule", { ok: true, value: SOCIAL_PREVIEW }),
+    cancel: record("cancel", { ok: true, value: { ...SOCIAL_POST, status: "cancelled" } }),
+    list: record("list", { ok: true, value: [SOCIAL_POST] }),
+  };
+  const social = {
+    configuredPlatforms: () => ["tiktok" as const],
+    listAccounts: async (userId: string) => {
+      calls.push({ method: "listAccounts", input: userId });
+      // Extra fields simulate a future storage leak; the tool must drop them.
+      return [{ ...SOCIAL_ACCOUNT, accessToken: "secret-token" }] as unknown as (typeof SOCIAL_ACCOUNT)[];
+    },
+    stageLocalFile: async (path: string) => {
+      calls.push({ method: "stageLocalFile", input: path });
+      if (overrides.stageLocalFile) return overrides.stageLocalFile(path) as Promise<{ stagingFile: string; size: number }>;
+      return { stagingFile: "3f0c8a2e-1111-4222-8333-444455556666.mp4", size: 11 };
+    },
+    queue: async () => queue as never,
+  };
+  return { social, calls };
+}
+
+function parseText(result: { content: Array<{ text: string }> }) {
+  return JSON.parse(result.content[0]?.text ?? "{}");
+}
+
+const AT_SCHEDULE = { mode: "at", localDateTime: "2026-10-22T10:00:00", timezone: "America/Argentina/Buenos_Aires" };
+
+test("MCP social_accounts returns public account fields and configured platforms for the active user", async () => {
+  const { social, calls } = makeSocialStub();
+  const handlers = createMcpToolHandlers({ ...makeCoreStub(), social }, makeAuthStub());
+
+  const result = await handlers.socialAccounts({});
+
+  assert.equal(result.isError, undefined);
+  const payload = result.structuredContent as { accounts: unknown[]; configuredPlatforms: string[] };
+  assert.deepEqual(payload.accounts, [
+    {
+      id: "acc-1",
+      platform: "tiktok",
+      externalAccountId: "tt-1",
+      displayName: "@gentleman",
+      scopes: ["video.publish"],
+      tokenExpiresAt: null,
+      connectedAt: "2026-10-21T12:00:00.000Z",
+    },
   ]);
+  assert.deepEqual(payload.configuredPlatforms, ["tiktok"]);
+  assert.doesNotMatch(result.content[0]?.text ?? "", /secret-token/);
+  assert.deepEqual(calls, [{ method: "listAccounts", input: "active-user" }]);
+});
+
+test("MCP social tools honor an explicit userId credentialRef and reject token credentials", async () => {
+  const { social, calls } = makeSocialStub();
+  const handlers = createMcpToolHandlers({ ...makeCoreStub(), social }, makeAuthStub());
+
+  await handlers.socialQueue({ credentialRef: { userId: "explicit-user" } });
+  const rejected = await handlers.socialQueue({ credentialRef: { accessToken: "raw" } });
+
+  assert.deepEqual(calls, [{ method: "list", input: { userId: "explicit-user" } }]);
+  assert.equal(rejected.isError, true);
+  assert.equal(parseText(rejected).error.code, "validation_failed");
+});
+
+test("MCP social_stage_video forwards the absolute path and returns the staged name and size", async () => {
+  const { social, calls } = makeSocialStub();
+  const handlers = createMcpToolHandlers({ ...makeCoreStub(), social }, makeAuthStub());
+
+  const result = await handlers.socialStageVideo({ path: "/Users/me/Videos/clip.mp4" });
+
+  assert.equal(result.isError, undefined);
+  assert.deepEqual(result.structuredContent, { stagingFile: "3f0c8a2e-1111-4222-8333-444455556666.mp4", size: 11 });
+  assert.deepEqual(calls, [{ method: "stageLocalFile", input: "/Users/me/Videos/clip.mp4" }]);
+});
+
+test("MCP social_stage_video maps staging failures to the structured error envelope", async () => {
+  const failure = Object.assign(new Error("Unsupported video extension; use mp4, mov, webm or mkv"), { code: "INVALID_INPUT" });
+  const { social } = makeSocialStub({
+    stageLocalFile: async () => {
+      throw failure;
+    },
+  });
+  const handlers = createMcpToolHandlers({ ...makeCoreStub(), social }, makeAuthStub());
+
+  const result = await handlers.socialStageVideo({ path: "/Users/me/notes.txt" });
+
+  assert.equal(result.isError, true);
+  assert.deepEqual(parseText(result), {
+    ok: false,
+    error: { code: "INVALID_INPUT", message: "Unsupported video extension; use mp4, mov, webm or mkv" },
+  });
+});
+
+test("MCP social_preview forwards userId and input, returns the preview with its token and only calls preview", async () => {
+  const { social, calls } = makeSocialStub();
+  const handlers = createMcpToolHandlers({ ...makeCoreStub(), social }, makeAuthStub());
+  const input = {
+    platform: "tiktok",
+    stagingFile: "clip.mp4",
+    caption: "New video",
+    platformOptions: { privacyLevel: "SELF_ONLY" },
+    schedule: AT_SCHEDULE,
+  };
+
+  const result = await handlers.socialPreview(input);
+
+  assert.equal(result.isError, undefined);
+  const payload = result.structuredContent as typeof SOCIAL_PREVIEW & { nextStep: string };
+  assert.equal(payload.confirmationToken, SOCIAL_PREVIEW.confirmationToken);
+  assert.deepEqual(payload.post, SOCIAL_POST);
+  assert.equal(payload.post.status, "draft");
+  assert.match(payload.nextStep, /social_confirm/);
+  assert.deepEqual(calls, [{ method: "preview", input: { userId: "active-user", ...input } }]);
+});
+
+test("MCP social_confirm forwards userId, postId and the confirmation token", async () => {
+  const { social, calls } = makeSocialStub();
+  const handlers = createMcpToolHandlers({ ...makeCoreStub(), social }, makeAuthStub());
+
+  const result = await handlers.socialConfirm({ postId: "post-1", confirmationToken: SOCIAL_PREVIEW.confirmationToken });
+
+  assert.equal(result.isError, undefined);
+  assert.equal((result.structuredContent as { post: { status: string } }).post.status, "scheduled");
+  assert.deepEqual(calls, [
+    { method: "confirm", input: { userId: "active-user", postId: "post-1", confirmationToken: SOCIAL_PREVIEW.confirmationToken } },
+  ]);
+});
+
+test("MCP social_queue, social_cancel and social_reschedule forward userId and input", async () => {
+  const { social, calls } = makeSocialStub();
+  const handlers = createMcpToolHandlers({ ...makeCoreStub(), social }, makeAuthStub());
+
+  const listed = await handlers.socialQueue({ status: "scheduled" });
+  const cancelled = await handlers.socialCancel({ postId: "post-1" });
+  const rescheduled = await handlers.socialReschedule({ postId: "post-1", schedule: { mode: "now" } });
+
+  assert.deepEqual((listed.structuredContent as { posts: unknown[] }).posts, [SOCIAL_POST]);
+  assert.equal((cancelled.structuredContent as { post: { status: string } }).post.status, "cancelled");
+  assert.equal((rescheduled.structuredContent as { confirmationToken: string }).confirmationToken, SOCIAL_PREVIEW.confirmationToken);
+  assert.deepEqual(calls, [
+    { method: "list", input: { userId: "active-user", status: "scheduled" } },
+    { method: "cancel", input: { userId: "active-user", postId: "post-1" } },
+    { method: "reschedule", input: { userId: "active-user", postId: "post-1", schedule: { mode: "now" } } },
+  ]);
+});
+
+test("MCP social tools return queue errors with the structured error envelope", async () => {
+  const { social } = makeSocialStub({
+    confirm: async () => ({ ok: false, error: { code: "CONFIRMATION_EXPIRED", message: "The confirmation expired; preview the post again" } }),
+  });
+  const handlers = createMcpToolHandlers({ ...makeCoreStub(), social }, makeAuthStub());
+
+  const result = await handlers.socialConfirm({ postId: "post-1", confirmationToken: "1.abc" });
+
+  assert.equal(result.isError, true);
+  assert.equal(result.structuredContent, undefined);
+  assert.deepEqual(parseText(result), {
+    ok: false,
+    error: { code: "CONFIRMATION_EXPIRED", message: "The confirmation expired; preview the post again" },
+  });
+});
+
+test("MCP social tools reject invalid input without calling the core", async () => {
+  const { social, calls } = makeSocialStub();
+  const handlers = createMcpToolHandlers({ ...makeCoreStub(), social }, makeAuthStub());
+  const validPreview = {
+    platform: "tiktok",
+    stagingFile: "clip.mp4",
+    caption: "New video",
+    platformOptions: { privacyLevel: "SELF_ONLY" },
+    schedule: AT_SCHEDULE,
+  };
+
+  const invalid: Array<[keyof ReturnType<typeof createMcpToolHandlers>, unknown]> = [
+    ["socialStageVideo", {}],
+    ["socialStageVideo", { path: "" }],
+    ["socialStageVideo", { path: "/a/clip.mp4", extra: true }],
+    ["socialPreview", { ...validPreview, platform: "x" }],
+    ["socialPreview", { ...validPreview, caption: "" }],
+    ["socialPreview", { ...validPreview, schedule: { mode: "later" } }],
+    ["socialPreview", { ...validPreview, schedule: { mode: "at", localDateTime: "tomorrow", timezone: "UTC" } }],
+    ["socialPreview", { ...validPreview, confirmationToken: "smuggled" }],
+    ["socialConfirm", { postId: "post-1" }],
+    ["socialConfirm", { confirmationToken: "1.abc" }],
+    ["socialQueue", { status: "unknown" }],
+    ["socialCancel", {}],
+    ["socialReschedule", { postId: "post-1" }],
+    ["socialAccounts", { extra: 1 }],
+  ];
+  for (const [method, input] of invalid) {
+    const result = await (handlers[method] as (input: unknown) => Promise<{ isError?: boolean; content: Array<{ text: string }> }>)(input);
+    assert.equal(result.isError, true, `${method} ${JSON.stringify(input)}`);
+    assert.equal(parseText(result).error.code, "validation_failed");
+  }
+  assert.deepEqual(calls, []);
+});
+
+test("MCP social tools surface a missing active auth context as AUTH_USER_NOT_FOUND", async () => {
+  const { social, calls } = makeSocialStub();
+  const auth = {
+    ...makeAuthStub(),
+    resolveEffectiveCredentialRef: async () => {
+      throw new DomainError({ code: "AUTH_USER_NOT_FOUND", message: "No active auth context. Run `auth login` first." });
+    },
+  };
+  const handlers = createMcpToolHandlers({ ...makeCoreStub(), social }, auth);
+
+  const result = await handlers.socialQueue({});
+
+  assert.equal(result.isError, true);
+  assert.equal(parseText(result).error.code, "AUTH_USER_NOT_FOUND");
+  assert.deepEqual(calls, []);
+});
+
+test("MCP social_preview leaves the post in draft and only social_confirm schedules it (real queue, in-memory db)", async (t) => {
+  const { createClient } = await import("@libsql/client");
+  const { createSocialStorage, initializeSocialTables } = await import("@/lib/social/storage");
+  const { createSocialQueueService } = await import("@/lib/social/queue/service");
+  const { mkdtemp, rm, writeFile } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+
+  const stagingRoot = await mkdtemp(join(tmpdir(), "mcp-social-"));
+  t.after(() => rm(stagingRoot, { recursive: true, force: true }));
+  await writeFile(join(stagingRoot, "clip.mp4"), "video-bytes");
+  const client = createClient({ url: ":memory:" });
+  await initializeSocialTables(client);
+  const secret = "test-nextauth-secret-value";
+  const storage = createSocialStorage({ client, secret });
+  await storage.upsertAccount(
+    "active-user",
+    "tiktok",
+    { externalAccountId: "tt-1", displayName: "@gentleman", scopes: ["video.publish"] },
+    { accessToken: "access" },
+  );
+  const queue = createSocialQueueService({ storage, secret, stagingRoot });
+  const { social } = makeSocialStub();
+  const handlers = createMcpToolHandlers(
+    { ...makeCoreStub(), social: { ...social, listAccounts: (userId: string) => storage.listAccounts(userId), queue: async () => queue } },
+    makeAuthStub(),
+  );
+
+  const preview = await handlers.socialPreview({
+    platform: "tiktok",
+    stagingFile: "clip.mp4",
+    caption: "New video",
+    platformOptions: { privacyLevel: "SELF_ONLY" },
+    schedule: { mode: "at", localDateTime: "2099-01-01T10:00:00", timezone: "UTC" },
+  });
+  assert.equal(preview.isError, undefined, preview.content[0]?.text);
+  const { post, confirmationToken } = preview.structuredContent as { post: { id: string }; confirmationToken: string };
+  assert.equal((await storage.getPost("active-user", post.id))?.status, "draft");
+  const accounts = await handlers.socialAccounts({});
+  assert.doesNotMatch(accounts.content[0]?.text ?? "", /access/);
+
+  const wrong = await handlers.socialConfirm({ postId: post.id, confirmationToken: `${confirmationToken.split(".")[0]}.${"0".repeat(64)}` });
+  assert.equal(parseText(wrong).error.code, "CONFIRMATION_INVALID");
+  assert.equal((await storage.getPost("active-user", post.id))?.status, "draft");
+
+  const confirmed = await handlers.socialConfirm({ postId: post.id, confirmationToken });
+  assert.equal(confirmed.isError, undefined, confirmed.content[0]?.text);
+  assert.equal((await storage.getPost("active-user", post.id))?.status, "scheduled");
 });
