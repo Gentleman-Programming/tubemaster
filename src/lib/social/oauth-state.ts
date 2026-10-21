@@ -8,6 +8,8 @@ const COOKIE_PATH = "/api/social";
 export type SocialOAuthEnv = {
   SOCIAL_OAUTH_BASE_URL?: string;
   NEXTAUTH_URL?: string;
+  TIKTOK_REDIRECT_URI?: string;
+  INSTAGRAM_REDIRECT_URI?: string;
 };
 
 type StatePayload = {
@@ -92,8 +94,20 @@ export function socialOAuthBaseUrl(env: SocialOAuthEnv = process.env) {
   return base.replace(/\/+$/, "");
 }
 
-/** SOCIAL_OAUTH_BASE_URL may point at an HTTPS tunnel when a provider rejects localhost redirects. */
+/**
+ * SOCIAL_OAUTH_BASE_URL may point at an HTTPS tunnel when a provider rejects localhost redirects.
+ * A per-platform override (e.g. TIKTOK_REDIRECT_URI) registers a public page that forwards the
+ * browser back to the local callback, for providers that reject every localhost redirect.
+ */
 export function socialRedirectUri(platform: SocialPlatform, env: SocialOAuthEnv = process.env) {
+  const overrideKey = platform === "tiktok" ? "TIKTOK_REDIRECT_URI" : "INSTAGRAM_REDIRECT_URI";
+  const override = env[overrideKey]?.trim();
+  if (override) {
+    if (!/^https:\/\/[^\s/]+\/\S*$/.test(override)) {
+      throw new Error(`${overrideKey} must be an absolute https:// URL`);
+    }
+    return override;
+  }
   return `${socialOAuthBaseUrl(env)}/api/social/${platform}/callback`;
 }
 
