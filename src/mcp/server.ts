@@ -22,6 +22,14 @@ import {
   createBestPublishTimes,
   type BestPublishTimesError,
 } from "@/lib/youtube-best-publish-times";
+import {
+  SOCIAL_PLATFORMS,
+  SOCIAL_POST_STATUSES,
+  type SocialAccount,
+  type SocialPlatform,
+} from "@/lib/social/contracts";
+import type { QueueErrorCode, QueueResult, SocialQueueService } from "@/lib/social/queue/service";
+import type { StagedLocalFile } from "@/lib/social/queue/stage-local-file";
 
 loadEnvConfig(process.cwd());
 
@@ -44,7 +52,59 @@ type BestPublishTimesCoreSubset = Partial<
   Pick<ReturnType<typeof createBestPublishTimes>, "fetchBestPublishTimes">
 >;
 
-type McpCore = VideoMetadataCoreSubset & PlaylistManagementCoreSubset & BestPublishTimesCoreSubset;
+/** Social publishing (S12). The default implementation loads the social modules only when a tool runs. */
+export type SocialMcpCore = {
+  configuredPlatforms: () => SocialPlatform[];
+  listAccounts: (userId: string) => Promise<SocialAccount[]>;
+  stageLocalFile: (path: string) => Promise<StagedLocalFile>;
+  queue: () => Promise<Pick<SocialQueueService, "preview" | "confirm" | "reschedule" | "cancel" | "list">>;
+};
+
+type McpCore = VideoMetadataCoreSubset &
+  PlaylistManagementCoreSubset &
+  BestPublishTimesCoreSubset & { social?: SocialMcpCore };
+
+const DEFAULT_VIDEO_UPLOAD_MAX_BYTES = 2 * 1024 * 1024 * 1024;
+
+function stagingRoot() {
+  return process.env.VIDEO_UPLOAD_STAGING_ROOT ?? `${process.cwd()}/staging`;
+}
+
+export const defaultSocialCore: SocialMcpCore = {
+  // Same rule as the worker's publishers: a platform is usable only with both app credentials.
+  configuredPlatforms: () =>
+    SOCIAL_PLATFORMS.filter((platform) =>
+      platform === "tiktok"
+        ? Boolean(process.env.TIKTOK_CLIENT_KEY && process.env.TIKTOK_CLIENT_SECRET)
+        : Boolean(process.env.INSTAGRAM_APP_ID && process.env.INSTAGRAM_APP_SECRET)
+    ),
+  listAccounts: async (userId) => {
+    const [{ quotaClient }, { createSocialStorage }] = await Promise.all([
+      import("@/lib/db"),
+      import("@/lib/social/storage"),
+    ]);
+    return createSocialStorage({ client: quotaClient, secret: process.env.NEXTAUTH_SECRET ?? "" }).listAccounts(userId);
+  },
+  stageLocalFile: async (path) => {
+    const { stageLocalFile } = await import("@/lib/social/queue/stage-local-file");
+    return stageLocalFile({
+      path,
+      stagingRoot: stagingRoot(),
+      maxBytes: Number(process.env.VIDEO_UPLOAD_MAX_BYTES ?? DEFAULT_VIDEO_UPLOAD_MAX_BYTES),
+    });
+  },
+  queue: async () => (await import("@/lib/social/queue")).createSocialQueue(),
+};
+
+const SOCIAL_ERROR_CODES = new Set<QueueErrorCode>([
+  "INVALID_INPUT",
+  "ACCOUNT_NOT_CONNECTED",
+  "STAGED_VIDEO_INVALID",
+  "NOT_FOUND",
+  "INVALID_STATE",
+  "CONFIRMATION_INVALID",
+  "CONFIRMATION_EXPIRED",
+]);
 
 type ToolResponse = {
   content: Array<{ type: "text"; text: string }>;
@@ -106,6 +166,33 @@ function bestPublishTimesErrorResult(error: BestPublishTimesError): ToolResponse
     ],
     isError: true,
   };
+}
+
+function socialErrorResult(error: { code: QueueErrorCode; message: string }): ToolResponse {
+  return {
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({ ok: false, error: { code: error.code, message: error.message } }),
+      },
+    ],
+    isError: true,
+  };
+}
+
+/** Typed social failures (queue codes, e.g. a rejected local file) keep their code; anything else is internal. */
+function socialThrownErrorResult(error: unknown): ToolResponse {
+  const code = error instanceof Error ? (error as { code?: unknown }).code : undefined;
+  if (typeof code === "string" && SOCIAL_ERROR_CODES.has(code as QueueErrorCode)) {
+    return socialErrorResult({ code: code as QueueErrorCode, message: (error as Error).message });
+  }
+  return toolErrorResult(error);
+}
+
+/** Explicit allow-list so tokens or future storage fields never reach the MCP client. */
+function toPublicSocialAccount(account: SocialAccount) {
+  const { id, platform, externalAccountId, displayName, scopes, tokenExpiresAt, connectedAt } = account;
+  return { id, platform, externalAccountId, displayName, scopes, tokenExpiresAt, connectedAt };
 }
 
 function toolSuccessResult(payload: Record<string, unknown>): ToolResponse {
@@ -182,6 +269,72 @@ export const bestPublishTimesInputSchema = z
   })
   .strict();
 
+// Social tools act for a local user, so only the userId form of credentialRef is accepted.
+const socialCredentialSchema = z.object({ userId: z.string().min(1) }).strict();
+
+// Mirrors the queue's schedule schema; the queue still performs the detailed validation.
+export const socialScheduleSchema = z.discriminatedUnion("mode", [
+  z.object({ mode: z.literal("now") }).strict(),
+  z
+    .object({
+      mode: z.literal("at"),
+      localDateTime: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/, "Use YYYY-MM-DDTHH:mm:ss local time"),
+      timezone: z.string().min(1),
+    })
+    .strict(),
+]);
+
+export const socialAccountsInputSchema = z
+  .object({ credentialRef: socialCredentialSchema.optional() })
+  .strict();
+
+export const socialStageVideoInputSchema = z
+  .object({ path: z.string().min(1) })
+  .strict();
+
+export const socialPreviewInputSchema = z
+  .object({
+    credentialRef: socialCredentialSchema.optional(),
+    platform: z.enum(SOCIAL_PLATFORMS),
+    stagingFile: z.string().min(1),
+    caption: z.string().trim().min(1).max(2200),
+    platformOptions: z.record(z.string(), z.unknown()),
+    schedule: socialScheduleSchema,
+  })
+  .strict();
+
+export const socialConfirmInputSchema = z
+  .object({
+    credentialRef: socialCredentialSchema.optional(),
+    postId: z.string().min(1),
+    confirmationToken: z.string().min(1),
+  })
+  .strict();
+
+export const socialQueueInputSchema = z
+  .object({
+    credentialRef: socialCredentialSchema.optional(),
+    status: z.enum(SOCIAL_POST_STATUSES).optional(),
+  })
+  .strict();
+
+export const socialCancelInputSchema = z
+  .object({
+    credentialRef: socialCredentialSchema.optional(),
+    postId: z.string().min(1),
+  })
+  .strict();
+
+export const socialRescheduleInputSchema = z
+  .object({
+    credentialRef: socialCredentialSchema.optional(),
+    postId: z.string().min(1),
+    schedule: socialScheduleSchema,
+  })
+  .strict();
+
 export const writeChannelListInputSchema = z
   .object({
     credentialRef: credentialSchema.optional(),
@@ -236,6 +389,24 @@ export function createMcpToolHandlers(
     return auth.resolveEffectiveCredentialRef({
       explicit: explicitCredentialRef as CredentialRef | undefined,
     });
+  }
+
+  const social = core.social ?? defaultSocialCore;
+
+  /** The social queue is keyed by the Google `sub`, the same id the active auth context stores. */
+  async function resolveSocialUserId(explicitCredentialRef: { userId: string } | undefined) {
+    const credentialRef = await resolveCredentialRef(explicitCredentialRef);
+    if (!("userId" in credentialRef) || !credentialRef.userId) {
+      throw new DomainError({
+        code: "AUTH_USER_NOT_FOUND",
+        message: "Social tools need a local user. Run `auth login` first.",
+      });
+    }
+    return credentialRef.userId;
+  }
+
+  function queueResult<T>(result: QueueResult<T>, toPayload: (value: T) => Record<string, unknown>) {
+    return result.ok ? toolSuccessResult(toPayload(result.value)) : socialErrorResult(result.error);
   }
 
   return {
@@ -402,6 +573,142 @@ export function createMcpToolHandlers(
         return toolSuccessResult(result);
       } catch (error) {
         return toolErrorResult(error);
+      }
+    },
+
+    async socialAccounts(input: unknown): Promise<ToolResponse> {
+      const parsedInput = socialAccountsInputSchema.safeParse(input);
+      if (!parsedInput.success) {
+        return mapValidationErrorResult(parsedInput.error);
+      }
+
+      try {
+        const userId = await resolveSocialUserId(parsedInput.data.credentialRef);
+        const accounts = await social.listAccounts(userId);
+        return toolSuccessResult({
+          accounts: accounts.map(toPublicSocialAccount),
+          configuredPlatforms: social.configuredPlatforms(),
+          connectHint: "Connect each platform once in the web app at /dashboard/social.",
+        });
+      } catch (error) {
+        return socialThrownErrorResult(error);
+      }
+    },
+
+    async socialStageVideo(input: unknown): Promise<ToolResponse> {
+      const parsedInput = socialStageVideoInputSchema.safeParse(input);
+      if (!parsedInput.success) {
+        return mapValidationErrorResult(parsedInput.error);
+      }
+
+      try {
+        const staged = await social.stageLocalFile(parsedInput.data.path);
+        return toolSuccessResult({ stagingFile: staged.stagingFile, size: staged.size });
+      } catch (error) {
+        return socialThrownErrorResult(error);
+      }
+    },
+
+    async socialPreview(input: unknown): Promise<ToolResponse> {
+      const parsedInput = socialPreviewInputSchema.safeParse(input);
+      if (!parsedInput.success) {
+        return mapValidationErrorResult(parsedInput.error);
+      }
+
+      try {
+        const { credentialRef, ...fields } = parsedInput.data;
+        const userId = await resolveSocialUserId(credentialRef);
+        const queue = await social.queue();
+        const result = await queue.preview({
+          userId,
+          ...fields,
+          platformOptions: fields.platformOptions as Parameters<typeof queue.preview>[0]["platformOptions"],
+        });
+        return queueResult(result, (preview) => ({
+          ...preview,
+          nextStep:
+            "Nothing is scheduled yet. Show this preview to the human and call social_confirm only after they explicitly approve it.",
+        }));
+      } catch (error) {
+        return socialThrownErrorResult(error);
+      }
+    },
+
+    async socialConfirm(input: unknown): Promise<ToolResponse> {
+      const parsedInput = socialConfirmInputSchema.safeParse(input);
+      if (!parsedInput.success) {
+        return mapValidationErrorResult(parsedInput.error);
+      }
+
+      try {
+        const userId = await resolveSocialUserId(parsedInput.data.credentialRef);
+        const queue = await social.queue();
+        const result = await queue.confirm({
+          userId,
+          postId: parsedInput.data.postId,
+          confirmationToken: parsedInput.data.confirmationToken,
+        });
+        return queueResult(result, (post) => ({ post }));
+      } catch (error) {
+        return socialThrownErrorResult(error);
+      }
+    },
+
+    async socialQueue(input: unknown): Promise<ToolResponse> {
+      const parsedInput = socialQueueInputSchema.safeParse(input);
+      if (!parsedInput.success) {
+        return mapValidationErrorResult(parsedInput.error);
+      }
+
+      try {
+        const userId = await resolveSocialUserId(parsedInput.data.credentialRef);
+        const queue = await social.queue();
+        const result = await queue.list(
+          parsedInput.data.status === undefined ? { userId } : { userId, status: parsedInput.data.status }
+        );
+        return queueResult(result, (posts) => ({ posts }));
+      } catch (error) {
+        return socialThrownErrorResult(error);
+      }
+    },
+
+    async socialCancel(input: unknown): Promise<ToolResponse> {
+      const parsedInput = socialCancelInputSchema.safeParse(input);
+      if (!parsedInput.success) {
+        return mapValidationErrorResult(parsedInput.error);
+      }
+
+      try {
+        const userId = await resolveSocialUserId(parsedInput.data.credentialRef);
+        const queue = await social.queue();
+        const result = await queue.cancel({ userId, postId: parsedInput.data.postId });
+        return queueResult(result, (post) => ({ post }));
+      } catch (error) {
+        return socialThrownErrorResult(error);
+      }
+    },
+
+    async socialReschedule(input: unknown): Promise<ToolResponse> {
+      const parsedInput = socialRescheduleInputSchema.safeParse(input);
+      if (!parsedInput.success) {
+        return mapValidationErrorResult(parsedInput.error);
+      }
+
+      try {
+        const userId = await resolveSocialUserId(parsedInput.data.credentialRef);
+        const queue = await social.queue();
+        const result = await queue.reschedule({
+          userId,
+          postId: parsedInput.data.postId,
+          schedule: parsedInput.data.schedule,
+        });
+        return queueResult(result, (preview) => ({
+          ...preview,
+          nextStep:
+            "The post is back in draft. Show this preview to the human and call social_confirm only after they explicitly approve it.",
+        }));
+      } catch (error) {
+        return socialThrownErrorResult(error);
       }
     },
 
@@ -634,6 +941,76 @@ export function createMcpServer(
       inputSchema: bestPublishTimesInputSchema,
     },
     (args) => handlers.bestPublishTimes(args)
+  );
+
+  server.registerTool(
+    "social_accounts",
+    {
+      description:
+        "List the connected Instagram/TikTok accounts (public fields only, never tokens) and which platforms have app credentials configured. Accounts are connected once in the web app at /dashboard/social, not through MCP. credentialRef is OPTIONAL and falls back to active local auth context.",
+      inputSchema: socialAccountsInputSchema,
+    },
+    (args) => handlers.socialAccounts(args)
+  );
+
+  server.registerTool(
+    "social_stage_video",
+    {
+      description:
+        "Copy a local video (absolute path to a regular mp4/mov/webm/mkv file, no symlinks, within VIDEO_UPLOAD_MAX_BYTES) into the staging folder and return its stagingFile name. The source file is only read, never moved or modified. Does not publish anything.",
+      inputSchema: socialStageVideoInputSchema,
+    },
+    (args) => handlers.socialStageVideo(args)
+  );
+
+  server.registerTool(
+    "social_preview",
+    {
+      description:
+        "Create a draft post for a staged video and return its preview plus a confirmationToken (valid 10 minutes). This does NOT publish or schedule anything. Show the preview (account, caption, platform options, scheduled time) to the human; confirming it requires their explicit human approval through social_confirm. schedule is {mode:'now'} or {mode:'at', localDateTime:'YYYY-MM-DDTHH:mm:ss', timezone:IANA}. TikTok needs platformOptions.privacyLevel (unaudited apps can only post SELF_ONLY); Instagram accepts platformOptions.shareToFeed. credentialRef is OPTIONAL and falls back to active local auth context.",
+      inputSchema: socialPreviewInputSchema,
+    },
+    (args) => handlers.socialPreview(args)
+  );
+
+  server.registerTool(
+    "social_confirm",
+    {
+      description:
+        "Confirm a previewed post: it is scheduled and then published irreversibly at its time (or right away for mode 'now'). Call this ONLY after the human has explicitly approved the exact preview you showed them; never on your own initiative. The token is bound to the file bytes, account, caption, options and time, so any change requires a new preview. The web app must be running (npm run dev -- --experimental-https) for its worker to publish; a post more than 5 minutes late is marked missed, never published late. credentialRef is OPTIONAL and falls back to active local auth context.",
+      inputSchema: socialConfirmInputSchema,
+    },
+    (args) => handlers.socialConfirm(args)
+  );
+
+  server.registerTool(
+    "social_queue",
+    {
+      description:
+        "List the user's social posts with their status (draft, scheduled, publishing, published, failed, missed, cancelled), optionally filtered by status. Read-only. credentialRef is OPTIONAL and falls back to active local auth context.",
+      inputSchema: socialQueueInputSchema,
+    },
+    (args) => handlers.socialQueue(args)
+  );
+
+  server.registerTool(
+    "social_cancel",
+    {
+      description:
+        "Cancel a draft, scheduled, failed or missed social post so it is never published. credentialRef is OPTIONAL and falls back to active local auth context.",
+      inputSchema: socialCancelInputSchema,
+    },
+    (args) => handlers.socialCancel(args)
+  );
+
+  server.registerTool(
+    "social_reschedule",
+    {
+      description:
+        "Move a scheduled, failed or missed social post to a new time. The post returns to draft and is NOT scheduled until the human explicitly approves the returned preview and social_confirm is called with the new confirmationToken. credentialRef is OPTIONAL and falls back to active local auth context.",
+      inputSchema: socialRescheduleInputSchema,
+    },
+    (args) => handlers.socialReschedule(args)
   );
 
   server.registerTool(

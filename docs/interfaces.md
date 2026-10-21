@@ -102,7 +102,7 @@ Run `node --import tsx src/cli/quota.ts usage [--bucketStart YYYY-MM-DD] [--oper
 
 ## MCP server (`npm run mcp:video-metadata`)
 
-Starts stdio MCP server with tools for auth context + metadata + playlists.
+Starts stdio MCP server with tools for auth context + metadata + playlists + social publishing.
 
 Important: MCP server does **not** expose login flow. Authenticate first using CLI (`auth login`).
 
@@ -118,6 +118,14 @@ Key MCP tools:
   - `list`, `transcript`, `preview`, `apply`
 - Best publish times tool:
   - `best_publish_times` — read-only estimate from the channel's own past uploads; `timezone` (IANA) required; needs `yt-analytics.readonly`; never publishes or schedules
+- Social publishing tools (Instagram/TikTok; accounts are connected once in the web app, see [Using it from MCP](./social-publishing.md#using-it-from-mcp)):
+  - `social_accounts` — connected accounts (public fields only, never tokens) and platforms configured in env
+  - `social_stage_video` — copies an absolute local video path (regular mp4/mov/webm/mkv file, no symlinks, size-limited) into staging; returns `stagingFile` and `size`; the source is never modified
+  - `social_preview` — creates a draft and returns the preview plus a 10-minute `confirmationToken`; does not publish
+  - `social_confirm` — `postId` + `confirmationToken`; schedules/publishes irreversibly; call only after the human approved the shown preview; the web app must be running for the worker to publish
+  - `social_queue` — lists posts, optional `status` filter
+  - `social_cancel` — cancels a draft, scheduled, failed or missed post
+  - `social_reschedule` — `postId` + `schedule`; returns the post to draft with a new preview and token that need a new confirmation
 - Playlist tools:
   - `playlist_list`, `playlist_create`, `playlist_update`, `playlist_delete`
   - `playlist_add_videos`, `playlist_remove_videos`
