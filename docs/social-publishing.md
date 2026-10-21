@@ -99,6 +99,10 @@ The MCP server (`npm run mcp:video-metadata`) can stage, preview, confirm and ma
 
 The MCP tools act for the user selected with the CLI (`auth login`). Sign in with the **same Google account** in the browser and in the CLI; both use its Google account id, so they see the same accounts and queue.
 
+The MCP process must share the web app's setup: run it from the project directory (the database and the default staging folder live there), with the same `.env.local` (`NEXTAUTH_SECRET`, and `VIDEO_UPLOAD_STAGING_ROOT` if you set it). Without `NEXTAUTH_SECRET` the queue tools return an internal error.
+
+> **Keep tool approval on.** The human confirmation relies on your MCP client asking before each tool call. Do not auto-approve `social_confirm`: with auto-approve, an agent could preview and confirm a post without you seeing it.
+
 Tool flow:
 
 1. `social_accounts` — check that the platform is connected and configured.
