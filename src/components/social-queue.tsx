@@ -15,11 +15,14 @@ import {
   type SocialApiResult,
   type SocialFetcher,
 } from "@/lib/social/presentation";
-import { Badge, Button, Card, EmptyState, Input, SectionHeader } from "@/components/ui";
+import { validateLocalDateTime } from "@/lib/datetime-picker";
+import { Badge, Button, Card, DateTimePicker, EmptyState, SectionHeader, useBestPublishSlots, type DateTimePickerProps } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import {
   browserTimezone,
   confirmSocialPost,
+  scheduleFields,
+  schedulePickerValue,
   SocialPostPreviewCard,
   type SocialPostPreview,
   type SocialSchedule,
@@ -116,13 +119,54 @@ export function SocialQueueContent({
   );
 }
 
-type RescheduleState = {
+export type RescheduleState = {
   post: SocialPost;
   date: string;
   time: string;
   timezone: string;
   preview: SocialPostPreview | null;
 };
+
+/** Inline form to pick a new time; previewing it returns the post to draft until confirmed. */
+export function RescheduleEditor({
+  state,
+  busy,
+  bestSlots,
+  onChange,
+  onSubmit,
+  onClose,
+}: {
+  state: RescheduleState;
+  busy: boolean;
+  bestSlots?: DateTimePickerProps["bestSlots"];
+  onChange: (state: RescheduleState) => void;
+  onSubmit: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <form
+      noValidate
+      className="space-y-3 rounded-panel border border-line bg-glass p-3"
+      onSubmit={(event) => { event.preventDefault(); onSubmit(); }}
+    >
+      <p className="text-xs text-subtle">Rescheduling returns the post to draft until you confirm the new time.</p>
+      <DateTimePicker
+        label="New publish date"
+        timeLabel="New publish time"
+        value={schedulePickerValue(state.date, state.time, state.timezone)}
+        timezone={state.timezone || undefined}
+        onTimezoneChange={(timezone) => onChange({ ...state, timezone })}
+        onChange={(value) => onChange({ ...state, ...scheduleFields(value) })}
+        bestSlots={bestSlots}
+        disabled={busy}
+      />
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" size="sm" disabled={busy}>Preview new time</Button>
+        <Button variant="ghost" size="sm" disabled={busy} onClick={onClose}>Close</Button>
+      </div>
+    </form>
+  );
+}
 
 export function SocialQueue({ fetcher = defaultFetcher, refreshKey = 0 }: { fetcher?: SocialFetcher; refreshKey?: number } = {}) {
   const [view, setView] = useState<SocialQueueView | null>(null);
@@ -131,6 +175,7 @@ export function SocialQueue({ fetcher = defaultFetcher, refreshKey = 0 }: { fetc
   const [message, setMessage] = useState("");
   const [reschedule, setReschedule] = useState<RescheduleState | null>(null);
   const [localTimezone, setLocalTimezone] = useState("UTC");
+  const bestSlots = useBestPublishSlots(reschedule?.timezone || null, !!reschedule && !reschedule.preview, fetcher);
 
   async function refresh() {
     setLoading(true);
@@ -168,6 +213,11 @@ export function SocialQueue({ fetcher = defaultFetcher, refreshKey = 0 }: { fetc
     const localDateTime = toLocalDateTime(state.date, state.time);
     if (!localDateTime) {
       setMessage("Enter a valid date and time.");
+      return;
+    }
+    const check = validateLocalDateTime(localDateTime, state.timezone);
+    if (!check.ok) {
+      setMessage(check.message);
       return;
     }
     setBusyPostId(state.post.id);
@@ -211,22 +261,14 @@ export function SocialQueue({ fetcher = defaultFetcher, refreshKey = 0 }: { fetc
       );
     }
     return (
-      <form
-        noValidate
-        className="space-y-3 rounded-panel border border-line bg-glass p-3"
-        onSubmit={(event) => { event.preventDefault(); void previewReschedule(reschedule); }}
-      >
-        <p className="text-xs text-subtle">Rescheduling returns the post to draft until you confirm the new time.</p>
-        <div className="grid gap-2 sm:grid-cols-3">
-          <Input type="date" aria-label="New publish date" value={reschedule.date} onChange={(event) => setReschedule({ ...reschedule, date: event.target.value })} disabled={busy} className="font-mono" />
-          <Input type="time" aria-label="New publish time" value={reschedule.time} onChange={(event) => setReschedule({ ...reschedule, time: event.target.value })} disabled={busy} className="font-mono" />
-          <Input type="text" aria-label="IANA timezone" value={reschedule.timezone} onChange={(event) => setReschedule({ ...reschedule, timezone: event.target.value })} disabled={busy} className="font-mono" />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button type="submit" size="sm" disabled={busy}>Preview new time</Button>
-          <Button variant="ghost" size="sm" disabled={busy} onClick={() => setReschedule(null)}>Close</Button>
-        </div>
-      </form>
+      <RescheduleEditor
+        state={reschedule}
+        busy={busy}
+        bestSlots={bestSlots}
+        onChange={setReschedule}
+        onSubmit={() => void previewReschedule(reschedule)}
+        onClose={() => setReschedule(null)}
+      />
     );
   }
 

@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import { use, useState } from "react";
+import { initialScheduleFromQuery } from "@/lib/datetime-picker";
 import type { SocialAccount } from "@/lib/social/contracts";
 import { SocialAccountsPanel } from "@/components/social-accounts-panel";
 import { SocialComposer } from "@/components/social-composer";
@@ -13,11 +14,21 @@ type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
 const single = (value: string | string[] | undefined) => (typeof value === "string" ? value : null);
 
+/** Calendar links pass `?at=<local ISO>&tz=<IANA>`; only a valid future time prefills the composer. */
+function readPrefill(at: string | null, tz: string | null) {
+  return { key: `${at ?? ""}|${tz ?? ""}`, schedule: initialScheduleFromQuery(at, tz, new Date()) };
+}
+
 export default function SocialPage({ searchParams }: { searchParams: SearchParams }) {
   const query = use(searchParams);
   const { status } = useSession();
   const [accounts, setAccounts] = useState<SocialAccount[] | null>(null);
   const [queueVersion, setQueueVersion] = useState(0);
+  const at = single(query.at);
+  const tz = single(query.tz);
+  const [prefill, setPrefill] = useState(() => readPrefill(at, tz));
+  // A new calendar link while on this page restarts the composer with its time.
+  if (prefill.key !== `${at ?? ""}|${tz ?? ""}`) setPrefill(readPrefill(at, tz));
 
   if (status === "loading") return <p role="status" className="font-mono text-sm text-subtle">Loading…</p>;
   if (status !== "authenticated") redirect("/");
@@ -37,7 +48,12 @@ export default function SocialPage({ searchParams }: { searchParams: SearchParam
           title={<span id="social-composer-heading">New post</span>}
           description="Choose a video and caption, preview it, then confirm."
         />
-        <SocialComposer accounts={accounts} onQueueChange={() => setQueueVersion((version) => version + 1)} />
+        <SocialComposer
+          key={prefill.key}
+          accounts={accounts}
+          initialSchedule={prefill.schedule}
+          onQueueChange={() => setQueueVersion((version) => version + 1)}
+        />
       </Card>
       <SocialQueue refreshKey={queueVersion} />
     </main>

@@ -17,7 +17,8 @@ import {
   type SocialApiResult,
   type SocialFetcher,
 } from "@/lib/social/presentation";
-import { Button, Input, Label, Select, Textarea } from "@/components/ui";
+import { parseLocalDateTime, validateLocalDateTime, type PickerValue } from "@/lib/datetime-picker";
+import { Button, DateTimePicker, Label, Select, Textarea, useBestPublishSlots } from "@/components/ui";
 import { cn } from "@/lib/cn";
 
 /** Client copy of the queue preview reply; the server type lives in a server-only module. */
@@ -91,10 +92,31 @@ export function validateComposer(form: ComposerForm, stagingFile: string, connec
   if (!form.caption.trim()) errors.caption = "Enter a caption.";
   else if (form.caption.length > SOCIAL_CAPTION_MAX_LENGTH) errors.caption = `Caption must be at most ${SOCIAL_CAPTION_MAX_LENGTH} characters.`;
   if (form.mode === "at") {
-    if (!toLocalDateTime(form.date, form.time)) errors.schedule = "Enter a valid date and time.";
+    const localDateTime = toLocalDateTime(form.date, form.time);
+    if (!localDateTime) errors.schedule = "Enter a valid date and time.";
     else if (!isTimezone(form.timezone)) errors.schedule = "Enter a valid IANA timezone, such as America/New_York.";
+    else {
+      const check = validateLocalDateTime(localDateTime, form.timezone);
+      if (!check.ok) errors.schedule = check.message;
+    }
   }
   return errors;
+}
+
+/** Picker value for a form's date, time and timezone, or null while incomplete. */
+export function schedulePickerValue(date: string, time: string, timezone: string): PickerValue | null {
+  const localDateTime = toLocalDateTime(date, time);
+  return localDateTime && timezone ? { localDateTime, timezone } : null;
+}
+
+/** Splits a picked value back into the form's date, time and timezone fields. */
+export function scheduleFields(value: PickerValue): { date: string; time: string; timezone: string } {
+  const parsed = parseLocalDateTime(value.localDateTime);
+  return { date: parsed?.date ?? "", time: parsed?.time ?? "", timezone: value.timezone };
+}
+
+function initialComposerForm(initialSchedule?: PickerValue | null): ComposerForm {
+  return initialSchedule ? { ...emptyComposerForm, mode: "at", ...scheduleFields(initialSchedule) } : emptyComposerForm;
 }
 
 export function buildPreviewBody(form: ComposerForm, stagingFile: string): SocialPreviewBody {
@@ -224,14 +246,17 @@ export function SocialComposer({
   stagingFile,
   fetcher = defaultFetcher,
   onQueueChange,
+  initialSchedule,
 }: {
   accounts: SocialAccount[] | null;
   /** An already staged file name to reuse instead of choosing a new file. */
   stagingFile?: string;
   fetcher?: SocialFetcher;
   onQueueChange?: () => void;
+  /** Prefilled scheduled time, e.g. from a calendar link; selects "Schedule". */
+  initialSchedule?: PickerValue | null;
 }) {
-  const [form, setForm] = useState<ComposerForm>(emptyComposerForm);
+  const [form, setForm] = useState<ComposerForm>(() => initialComposerForm(initialSchedule));
   const [localTimezone, setLocalTimezone] = useState("UTC");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [stagedFrom, setStagedFrom] = useState<File | null>(null);
@@ -247,6 +272,7 @@ export function SocialComposer({
     setLocalTimezone(timezone);
     setForm((current) => (current.timezone ? current : { ...current, timezone }));
   }, []);
+  const bestSlots = useBestPublishSlots(form.timezone || null, form.mode === "at", fetcher);
 
   if (accounts === null) return <p role="status" className="font-mono text-sm text-subtle">Loading connected accounts...</p>;
   const connected = accounts.map((account) => account.platform);
@@ -434,11 +460,16 @@ export function SocialComposer({
           </label>
         </div>
         {current.mode === "at" && (
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Input type="date" aria-label="Publish date" value={current.date} onChange={(event) => update("date", event.target.value)} disabled={busy} className="font-mono" />
-            <Input type="time" aria-label="Publish time" value={current.time} onChange={(event) => update("time", event.target.value)} disabled={busy} className="font-mono" />
-            <Input type="text" aria-label="IANA timezone" value={current.timezone} onChange={(event) => update("timezone", event.target.value)} disabled={busy} className="font-mono" />
-          </div>
+          <DateTimePicker
+            label="Publish date"
+            timeLabel="Publish time"
+            value={schedulePickerValue(current.date, current.time, current.timezone)}
+            timezone={current.timezone || undefined}
+            onTimezoneChange={(timezone) => update("timezone", timezone)}
+            onChange={(value) => setForm((previous) => ({ ...previous, ...scheduleFields(value) }))}
+            bestSlots={bestSlots}
+            disabled={busy}
+          />
         )}
         {current.mode === "at" && <p className="text-xs text-muted">The app must be running at that time. Posts more than 5 minutes late are marked missed and never published late.</p>}
         {fieldError("schedule")}

@@ -174,3 +174,25 @@ test("the composer asks to connect an account first", () => {
   const html = renderToStaticMarkup(<SocialComposer accounts={[]} />);
   assert.match(html, /Connect a TikTok or Instagram account/);
 });
+
+test("rejects a schedule that falls in a DST gap", () => {
+  const errors = validateComposer({ ...form, date: "2026-03-08", time: "02:30", timezone: "America/New_York" }, "abc123.mp4", ["tiktok"]);
+  assert.match(errors.schedule ?? "", /does not exist or is ambiguous/);
+});
+
+test("the composer opens the date picker prefilled from a calendar link", () => {
+  const html = renderToStaticMarkup(
+    <SocialComposer
+      accounts={[account("tiktok")]}
+      stagingFile="abc123.mp4"
+      initialSchedule={{ localDateTime: "2026-10-22T09:00:00", timezone: "America/Argentina/Buenos_Aires" }}
+    />,
+  );
+  assert.match(html, /checked="" value="at"/);
+  assert.match(html, /role="grid"/);
+  assert.match(html, /aria-label="Publish date, October 2026"/);
+  assert.match(html, /aria-label="Publish time"/);
+  assert.match(html, /aria-label="IANA timezone"/);
+  assert.match(html, /Thursday, October 22, 2026 · 09:00 \(America\/Argentina\/Buenos_Aires\)/);
+  assert.doesNotMatch(html, /type="date"/);
+});
