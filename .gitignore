@@ -46,3 +46,5 @@ data/auth-context.json
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+certificates
