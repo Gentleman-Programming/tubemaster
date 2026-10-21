@@ -204,7 +204,7 @@ function MonthTable({ grid, timezone, selectedId, onSelect, onShowDay }: GridPro
                     day.isToday && "bg-rose/5",
                   )}
                 >
-                  <div className="mb-1 flex min-w-0 items-center justify-between gap-1">
+                  <div className="mb-1 flex min-w-0 flex-wrap items-center justify-between gap-1">
                     <span
                       aria-current={day.isToday ? "date" : undefined}
                       className={cn("font-mono text-xs", day.isToday ? "rounded-full bg-rose px-1.5 text-canvas" : "text-dim")}
@@ -273,7 +273,7 @@ function WeekTable({ week, timezone, selectedId, onSelect }: GridProps & { week:
 
   const label = week.days.length === 7 ? `Week of ${formatDayLabel(startKey)}` : `${week.days.length} days from ${formatDayLabel(startKey)}`;
   return (
-    <div ref={scrollerRef} className="max-h-[70vh] overflow-auto rounded-panel border border-line-soft">
+    <div ref={scrollerRef} className="max-h-[70vh] overflow-auto rounded-panel border border-line-soft md:max-h-none md:overflow-x-auto md:overflow-y-visible">
       <table aria-label={label} className={cn("w-full table-fixed border-collapse text-sm", week.days.length === 7 && "min-w-[48rem]")}>
         <thead className="sticky top-0 z-10 bg-surface-2">
           <tr>
