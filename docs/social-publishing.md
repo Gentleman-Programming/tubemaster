@@ -54,7 +54,15 @@ Register these exact URIs in each developer app:
 | TikTok | `<base>/api/social/tiktok/callback` |
 | Instagram | `<base>/api/social/instagram/callback` |
 
-`<base>` is `SOCIAL_OAUTH_BASE_URL` when set, otherwise `NEXTAUTH_URL` (for example `http://localhost:3102`).
+`<base>` is `SOCIAL_OAUTH_BASE_URL` when set, otherwise `NEXTAUTH_URL` (for example `https://localhost:3102`).
+
+**TikTok rejects every localhost redirect URI** ("localhost is not supported"), even over HTTPS. Register the public forwarding page instead and set the same value in `.env.local`:
+
+```
+TIKTOK_REDIRECT_URI=https://gentleman-programming.github.io/tubemaster/oauth/tiktok/
+```
+
+That page (`docs/oauth/tiktok/index.html`, served by GitHub Pages) only forwards the browser to `https://localhost:3102/api/social/tiktok/callback` with the same query string. It is safe to share: the authorization code cannot be used without the PKCE verifier, which stays in your local app, and the signed state is bound to your session. If your app runs on another origin, host your own copy of the page with that target.
 
 ## Environment variables
 
@@ -67,6 +75,7 @@ Add to `.env.local` (alongside the existing `NEXTAUTH_SECRET` and `NEXTAUTH_URL`
 | `INSTAGRAM_APP_ID` | For Instagram | Meta app ID |
 | `INSTAGRAM_APP_SECRET` | For Instagram | Meta app secret |
 | `SOCIAL_OAUTH_BASE_URL` | No | Base URL for the redirect URIs, e.g. an HTTPS tunnel |
+| `TIKTOK_REDIRECT_URI` / `INSTAGRAM_REDIRECT_URI` | No | Full redirect URI override for one platform (must be `https://`), e.g. the TikTok forwarding page |
 | `SOCIAL_WORKER_DISABLED` | No | Set to `1` to stop the in-app publishing worker |
 
 Account tokens are encrypted at rest with a key derived from `NEXTAUTH_SECRET`. Changing that secret means reconnecting the accounts.

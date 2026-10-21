@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex">
+  <title>TubeMaster: returning to your local app</title>
+  <script>
+    // TikTok rejects localhost redirect URIs, so it redirects here and this page forwards the
+    // browser to the user's own local TubeMaster. The target is fixed: this is not an open redirect.
+    // The authorization code is useless without the PKCE verifier, which never leaves the local app.
+    window.location.replace("https://localhost:3102/api/social/tiktok/callback" + window.location.search);
+  </script>
+</head>
+<body>
+  <p>Returning to your local TubeMaster app at <code>https://localhost:3102</code>…</p>
+  <noscript>JavaScript is required to finish connecting TikTok. Make sure TubeMaster is running locally.</noscript>
+</body>
+</html>

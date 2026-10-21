@@ -85,3 +85,16 @@ test("readCookie extracts one cookie from the request header", () => {
   assert.equal(readCookie(request, "missing"), undefined);
   assert.equal(readCookie(new Request("http://localhost/"), "a"), undefined);
 });
+
+test("a per-platform redirect override replaces only that platform's redirect URI", () => {
+  const env = {
+    NEXTAUTH_URL: "https://localhost:3102",
+    TIKTOK_REDIRECT_URI: "https://gentleman-programming.github.io/tubemaster/oauth/tiktok/",
+  };
+  assert.equal(socialRedirectUri("tiktok", env), "https://gentleman-programming.github.io/tubemaster/oauth/tiktok/");
+  assert.equal(socialRedirectUri("instagram", env), "https://localhost:3102/api/social/instagram/callback");
+  assert.throws(
+    () => socialRedirectUri("tiktok", { NEXTAUTH_URL: "https://localhost:3102", TIKTOK_REDIRECT_URI: "http://example.com/cb" }),
+    /TIKTOK_REDIRECT_URI must be an absolute https:\/\/ URL/,
+  );
+});
