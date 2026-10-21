@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { nextChannelThumbnail } from "@/components/channel-thumbnail";
+import { Badge, Button, Card } from "@/components/ui";
 
 type ChannelInfo = {
   id: string;
@@ -52,34 +53,36 @@ export function DashboardHeader() {
   }
 
   return (
-    <header className="space-y-5 border-b border-zinc-800 pb-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-xl font-bold">YouTube Playlist Manager</p>
-          <p className="text-sm text-zinc-400">Welcome, {session?.user?.name}</p>
-        </div>
-        <button onClick={() => signOut()} className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:border-zinc-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-          Sign Out
-        </button>
-      </div>
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3">
-        <div className="flex items-center gap-3">
-          {thumbnail && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={thumbnail} onError={() => setFailedThumbnail(thumbnail)} alt={channel?.title ?? "Channel"} className="h-10 w-10 rounded-full" />
-          )}
-          <div>
-            <p className="text-xs text-zinc-500">Active YouTube channel</p>
-            <p className="font-medium">
-              {channel?.title ?? (channelState.status === "loading" ? "Loading..." : channelState.status === "empty" ? "No channel found" : "Unable to load channel")}
-              {channel?.videoCount && <span className="ml-2 text-xs text-zinc-500">{channel.videoCount} videos</span>}
-            </p>
+    <header>
+      <Card as="div" className="overflow-hidden p-0 shadow-glow">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line-soft px-5 py-4">
+          <div className="min-w-0">
+            <p className="text-xl font-semibold text-fg">YouTube Playlist Manager</p>
+            <p className="font-mono text-xs text-subtle">Welcome, {session?.user?.name}</p>
           </div>
+          <Button variant="secondary" onClick={() => signOut()}>
+            Sign Out
+          </Button>
         </div>
-        <button onClick={handleSwitchChannel} className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-          Switch Channel
-        </button>
-      </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-glass px-5 py-3">
+          <div className="flex min-w-0 items-center gap-3">
+            {thumbnail && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={thumbnail} onError={() => setFailedThumbnail(thumbnail)} alt={channel?.title ?? "Channel"} className="h-10 w-10 shrink-0 rounded-full ring-2 ring-rose/40" />
+            )}
+            <div className="min-w-0">
+              <p className="font-mono text-[11px] uppercase tracking-widest text-rose">Active YouTube channel</p>
+              <p className="flex flex-wrap items-center gap-2 font-medium text-fg">
+                {channel?.title ?? (channelState.status === "loading" ? "Loading..." : channelState.status === "empty" ? "No channel found" : "Unable to load channel")}
+                {channel?.videoCount && <Badge>{channel.videoCount} videos</Badge>}
+              </p>
+            </div>
+          </div>
+          <Button variant="secondary" size="sm" onClick={handleSwitchChannel}>
+            Switch Channel
+          </Button>
+        </div>
+      </Card>
     </header>
   );
 }
