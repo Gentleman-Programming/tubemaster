@@ -90,6 +90,25 @@ After the account is connected you can remove the tunnel; publishing does not us
 - Failed posts are never retried automatically.
 - Rescheduling returns the post to draft; the new time needs a new preview and confirmation.
 
+## Using it from MCP
+
+The MCP server (`npm run mcp:video-metadata`) can stage, preview, confirm and manage posts. Two parts stay in the web app:
+
+- **Connecting accounts** is a one-time browser OAuth flow: open https://localhost:3102/dashboard/social and connect TikTok and/or Instagram there.
+- **Publishing** is done by the worker inside the web app: keep `npm run dev -- --experimental-https` running, or scheduled posts are not published (and are marked missed if the app starts more than 5 minutes late).
+
+The MCP tools act for the user selected with the CLI (`auth login`). Sign in with the **same Google account** in the browser and in the CLI; both use its Google account id, so they see the same accounts and queue.
+
+Tool flow:
+
+1. `social_accounts` — check that the platform is connected and configured.
+2. `social_stage_video` with `{ "path": "/absolute/path/clip.mp4" }` — copies the file into staging and returns `stagingFile`. The original file is not moved or changed.
+3. `social_preview` with `platform`, `stagingFile`, `caption`, `platformOptions` (TikTok: `privacyLevel`, e.g. `SELF_ONLY`; Instagram: optional `shareToFeed`) and `schedule` (`{ "mode": "now" }` or `{ "mode": "at", "localDateTime": "2026-10-22T10:00:00", "timezone": "America/Argentina/Buenos_Aires" }`). This creates a draft only.
+4. **Human approval** — review the returned account, caption, options and UTC time. Approve the `social_confirm` call in your MCP client only if the preview is what you want.
+5. `social_confirm` with `postId` and `confirmationToken` (valid 10 minutes). The post becomes scheduled and is published by the web app's worker at its time.
+
+Use `social_queue` to follow status, `social_cancel` to stop a post, and `social_reschedule` to pick a new time (it returns a new preview that needs a new confirmation).
+
 ## First real run checklist
 
 The platform endpoints, API versions and scopes were written from the public docs and have not been exercised against the live APIs yet.

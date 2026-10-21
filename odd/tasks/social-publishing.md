@@ -28,7 +28,7 @@ Objective: publish videos now or at a scheduled time to X, Instagram and TikTok 
 | T5 | S5, S7 | TikTok: OAuth connect routes + publish adapter | delegated (parallel with T2) | high: credentials | done (RED → GREEN oauth 7/7, connector 4/4, publisher 10/10, routes 7/7) | 237ef48 |
 | T6 | S5, S7 | Instagram: OAuth connect routes + resumable publish adapter | delegated (parallel with T3) | high: credentials | done (RED → GREEN connector 6/6, publisher 10/10, routes 6/6) | 49c55a4 |
 | T7 | S10 | Social dashboard page | delegated (with T8) | medium | done (RED → GREEN presentation 15/15, accounts 6/6, composer 9/9, queue 5/5; sidebar link by parent) | UI commit |
-| T9 | S12 | MCP tools for social publishing | delegated | high: new tools that trigger irreversible publishing after confirm | in progress | |
+| T9 | S12 | MCP tools for social publishing | delegated | high: new tools that trigger irreversible publishing after confirm | done (premise verified: web and MCP share the Google `sub` user id; RED → GREEN stage-local-file 7/7, server 48/48; npm test 493 pass, tsc, lint) | T9 commit |
 | T8 | S11 | Setup docs per platform | delegated (with T7) | passive | done (structural readback) | this commit |
 
 Dependencies: T1 first; then T2 and T4-T6 (adapters depend on T1 contracts); T3 after T2; T7/T8 after T2. Files owned by `feat/issue-89-scheduling-ui` (Eloy, unmerged) are not edited: `src/lib/video-scheduling/*`, `src/components/dashboard-upload-form.tsx`, `src/app/api/youtube/schedule/*` (import of `toUnambiguousUtc` only).
