@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode } from "react";
 import type { SocialPost } from "@/lib/social/contracts";
 import {
   canCancelPost,
@@ -16,10 +16,12 @@ import {
   type SocialFetcher,
 } from "@/lib/social/presentation";
 import {
+  buildDayRange,
   buildMonthGrid,
   buildWeekView,
   composerHref,
   formatDayLabel,
+  nextSlotCell,
   shiftDays,
   shiftMonth,
   startOfWeek,
@@ -28,6 +30,7 @@ import {
   type CalendarItem,
   type DayKey,
   type MonthGrid,
+  type SlotCell,
   type WeekView,
 } from "@/lib/schedule-calendar";
 import type { ScheduledYoutubeVideo } from "@/lib/youtube-schedule-calendar/contracts";
@@ -52,6 +55,9 @@ const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Satur
 const MONTH_CHIP_LIMIT = 3;
 const YOUTUBE_DOT = "bg-danger";
 const YOUTUBE_TONE = "border-mauve/30 bg-mauve/10 text-mauve";
+const NARROW_QUERY = "(max-width: 767px)";
+const NARROW_DAYS = 3;
+const DEFAULT_SCROLL_HOUR = 8;
 
 function youtubeNotice(code: string | undefined): string {
   switch (code) {
@@ -120,17 +126,42 @@ function ItemChip({ item, timezone, selected, onSelect }: { item: CalendarItem; 
   );
 }
 
-function NewPostLink({ slot, timezone, dayKey, className }: { slot: string; timezone: string; dayKey: DayKey; className?: string }) {
+type SlotRef = SlotCell & { slot: string };
+
+/** Roving tabindex: one empty slot is tabbable, arrow keys (and Home/End) move between slots. */
+function useRovingSlots(slots: readonly SlotRef[], defaultSlot: string | null) {
+  const [active, setActive] = useState<string | null>(null);
+  const tabbable = active && slots.some((entry) => entry.slot === active) ? active : defaultSlot;
+
+  function onKeyDown(event: KeyboardEvent<HTMLAnchorElement>, slot: string) {
+    const next = nextSlotCell(slots, slots.findIndex((entry) => entry.slot === slot), event.key);
+    if (next === null) return;
+    event.preventDefault();
+    const target = slots[next].slot;
+    setActive(target);
+    event.currentTarget.closest("table")?.querySelector<HTMLElement>(`[data-slot="${target}"]`)?.focus();
+  }
+
+  return { tabbable, onFocus: setActive, onKeyDown };
+}
+
+type Roving = ReturnType<typeof useRovingSlots>;
+
+function NewPostLink({ slot, timezone, dayKey, roving, className }: { slot: string; timezone: string; dayKey: DayKey; roving: Roving; className?: string }) {
   return (
     <Link
       href={composerHref(slot, timezone)}
+      data-slot={slot}
+      tabIndex={roving.tabbable === slot ? 0 : -1}
+      onFocus={() => roving.onFocus(slot)}
+      onKeyDown={(event) => roving.onKeyDown(event, slot)}
       aria-label={`New post on ${formatDayLabel(dayKey)} at ${slot.slice(11)}`}
       className={cn(
-        "rounded-control px-1 font-mono text-[11px] text-muted transition-colors hover:bg-rose/10 hover:text-rose focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-rose",
+        "shrink-0 rounded-control px-1 font-mono text-[11px] text-muted transition-colors hover:bg-rose/10 hover:text-rose focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-rose",
         className,
       )}
     >
-      + new
+      +<span className="hidden sm:inline"> new</span>
     </Link>
   );
 }
@@ -143,6 +174,8 @@ type GridProps = {
 };
 
 function MonthTable({ grid, timezone, selectedId, onSelect, onShowDay }: GridProps & { grid: MonthGrid }) {
+  const slots = grid.weeks.flatMap((week, row) => week.flatMap((day, col) => (day.slot ? [{ slot: day.slot, row, col }] : [])));
+  const roving = useRovingSlots(slots, slots[0]?.slot ?? null);
   const title = formatInZone(`${grid.year}-${String(grid.month).padStart(2, "0")}-15T12:00:00Z`, "UTC", { month: "long", year: "numeric" });
   return (
     <table aria-label={title} className="w-full table-fixed border-collapse text-sm">
@@ -171,7 +204,7 @@ function MonthTable({ grid, timezone, selectedId, onSelect, onShowDay }: GridPro
                     day.isToday && "bg-rose/5",
                   )}
                 >
-                  <div className="mb-1 flex items-center justify-between gap-1">
+                  <div className="mb-1 flex min-w-0 items-center justify-between gap-1">
                     <span
                       aria-current={day.isToday ? "date" : undefined}
                       className={cn("font-mono text-xs", day.isToday ? "rounded-full bg-rose px-1.5 text-canvas" : "text-dim")}
@@ -179,7 +212,7 @@ function MonthTable({ grid, timezone, selectedId, onSelect, onShowDay }: GridPro
                       <span aria-hidden="true">{day.day}</span>
                       <span className="sr-only">{formatDayLabel(day.key)}</span>
                     </span>
-                    {day.slot && <NewPostLink slot={day.slot} timezone={timezone} dayKey={day.key} />}
+                    {day.slot && <NewPostLink slot={day.slot} timezone={timezone} dayKey={day.key} roving={roving} />}
                   </div>
                   <div className="space-y-1">
                     {day.items.slice(0, MONTH_CHIP_LIMIT).map((item) => (
@@ -205,10 +238,43 @@ function MonthTable({ grid, timezone, selectedId, onSelect, onShowDay }: GridPro
   );
 }
 
+/** Hour to bring into view: the current hour when today is shown, otherwise the start of the working day. */
+function scrollHourOf(week: WeekView): number {
+  const today = week.days.find((day) => day.isToday);
+  if (!today) return DEFAULT_SCROLL_HOUR;
+  const firstFuture = today.hours.findIndex((hour) => !hour.isPast);
+  return firstFuture === -1 ? 23 : Math.max(0, firstFuture - 1);
+}
+
 function WeekTable({ week, timezone, selectedId, onSelect }: GridProps & { week: WeekView }) {
+  const slots: SlotRef[] = [];
+  for (let hour = 0; hour < 24; hour++) {
+    week.days.forEach((day, col) => {
+      const cell = day.hours[hour];
+      if (cell.exists && !cell.items.length && cell.slot) slots.push({ slot: cell.slot, row: hour, col });
+    });
+  }
+  // The earliest empty slot in time (day by day) starts the tab order.
+  const earliest = week.days.flatMap((day) => day.hours).find((cell) => slots.some((entry) => entry.slot === cell.slot));
+  const roving = useRovingSlots(slots, earliest?.slot ?? null);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const scrolledFor = useRef<string | null>(null);
+  const startKey = week.days[0].key;
+  const scrollHour = scrollHourOf(week);
+
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller || scrolledFor.current === startKey) return;
+    scrolledFor.current = startKey;
+    const row = scroller.querySelector<HTMLElement>(`[data-hour="${scrollHour}"]`);
+    const header = scroller.querySelector("thead")?.getBoundingClientRect().height ?? 0;
+    if (row) scroller.scrollTop += row.getBoundingClientRect().top - scroller.getBoundingClientRect().top - header;
+  }, [startKey, scrollHour]);
+
+  const label = week.days.length === 7 ? `Week of ${formatDayLabel(startKey)}` : `${week.days.length} days from ${formatDayLabel(startKey)}`;
   return (
-    <div className="max-h-[70vh] overflow-auto rounded-panel border border-line-soft">
-      <table aria-label={`Week of ${formatDayLabel(week.days[0].key)}`} className="w-full min-w-[48rem] table-fixed border-collapse text-sm">
+    <div ref={scrollerRef} className="max-h-[70vh] overflow-auto rounded-panel border border-line-soft">
+      <table aria-label={label} className={cn("w-full table-fixed border-collapse text-sm", week.days.length === 7 && "min-w-[48rem]")}>
         <thead className="sticky top-0 z-10 bg-surface-2">
           <tr>
             <th scope="col" className="w-16 p-2"><span className="sr-only">Hour</span></th>
@@ -222,7 +288,7 @@ function WeekTable({ week, timezone, selectedId, onSelect }: GridProps & { week:
         </thead>
         <tbody>
           {Array.from({ length: 24 }, (_, hour) => (
-            <tr key={hour}>
+            <tr key={hour} data-hour={hour}>
               <th scope="row" className="border-t border-line-soft p-1 pr-2 text-right align-top font-mono text-[11px] font-normal text-muted">{`${String(hour).padStart(2, "0")}:00`}</th>
               {week.days.map((day) => {
                 const cell = day.hours[hour];
@@ -240,7 +306,7 @@ function WeekTable({ week, timezone, selectedId, onSelect }: GridProps & { week:
                         ))}
                       </div>
                     ) : (
-                      cell.slot && <NewPostLink slot={cell.slot} timezone={timezone} dayKey={day.key} className="block h-full w-full opacity-0 hover:opacity-100 focus-visible:opacity-100" />
+                      cell.slot && <NewPostLink slot={cell.slot} timezone={timezone} dayKey={day.key} roving={roving} className="block h-full w-full opacity-0 hover:opacity-100 focus-visible:opacity-100" />
                     )}
                   </td>
                 );
@@ -268,10 +334,13 @@ export function ScheduleCalendarContent({
     <div className="space-y-3">
       {state.data.notice && <p role="note" className="rounded-control border border-warn/30 bg-warn/10 px-3 py-2 text-sm text-warn">{state.data.notice}</p>}
       {!visible.length && <EmptyState title="Nothing scheduled in this period." description="Pick a future day or hour to create a post." className="py-4" />}
-      <div className="overflow-x-auto">
-        {mode === "month" && monthGrid && <MonthTable grid={monthGrid} {...grid} />}
-        {mode === "week" && week && <WeekTable week={week} {...grid} />}
-      </div>
+      {mode === "month" && monthGrid && (
+        <div className="overflow-x-auto">
+          <MonthTable grid={monthGrid} {...grid} />
+        </div>
+      )}
+      {/* The week grid is its own (single) scroller so it can open at the current hour. */}
+      {mode === "week" && week && <WeekTable key={week.days[0].key} week={week} {...grid} />}
     </div>
   );
 }
@@ -344,6 +413,28 @@ export function CalendarItemDetail({
 
 type RescheduleState = { date: string; time: string; timezone: string; preview: SocialPostPreview | null };
 
+function subscribeNarrow(onChange: () => void) {
+  const query = window.matchMedia(NARROW_QUERY);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+
+/** Narrow screens get a short day range instead of the full week; the server always renders the week. */
+function useNarrowScreen(): boolean {
+  return useSyncExternalStore(subscribeNarrow, () => window.matchMedia(NARROW_QUERY).matches, () => false);
+}
+
+function shortDay(key: DayKey): string {
+  return formatInZone(`${key}T12:00:00Z`, "UTC", { month: "short", day: "numeric" });
+}
+
+function segmentClasses(active: boolean): string {
+  return cn(
+    "rounded-control border px-3 py-1.5 font-mono text-xs font-medium capitalize transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose",
+    active ? "border-rose/40 bg-rose/10 text-rose" : "border-transparent text-subtle hover:bg-glass-2 hover:text-fg",
+  );
+}
+
 export function ScheduleCalendar({ fetcher = defaultFetcher }: { fetcher?: SocialFetcher } = {}) {
   const [clock, setClock] = useState<{ timezone: string; now: Date } | null>(null);
   const [state, setState] = useState<CalendarLoadState>({ kind: "loading" });
@@ -355,6 +446,7 @@ export function ScheduleCalendar({ fetcher = defaultFetcher }: { fetcher?: Socia
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const bestSlots = useBestPublishSlots(reschedule?.timezone || null, !!reschedule && !reschedule.preview, fetcher);
+  const narrow = useNarrowScreen();
 
   useEffect(() => {
     setClock({ timezone: browserTimezone(), now: new Date() });
@@ -380,15 +472,19 @@ export function ScheduleCalendar({ fetcher = defaultFetcher }: { fetcher?: Socia
   const data = state.kind === "ready" ? state.data : null;
   const items = data ? toCalendarItems(data.posts, data.videos) : [];
   const monthGrid = mode === "month" ? buildMonthGrid({ year, month, timezone, now, items }) : null;
-  const week = mode === "week" ? buildWeekView({ anchor: current, timezone, now, items }) : null;
+  const dayRange = mode === "week" && narrow;
+  const week =
+    mode !== "week" ? null : dayRange ? buildDayRange({ start: current, count: NARROW_DAYS, timezone, now, items }) : buildWeekView({ anchor: current, timezone, now, items });
   const selected = items.find((item) => item.id === selectedId) ?? null;
   const selectedPost = selected && data ? data.posts.find((post) => `social:${post.id}` === selected.id) : undefined;
-  const title = week
+  const title = dayRange
+    ? `${shortDay(current)} – ${shortDay(shiftDays(current, NARROW_DAYS - 1))}, ${shiftDays(current, NARROW_DAYS - 1).slice(0, 4)}`
+    : week
     ? `Week of ${formatDayLabel(startOfWeek(current)).split(", ").slice(1).join(", ")}`
     : formatInZone(`${current.slice(0, 7)}-15T12:00:00Z`, "UTC", { month: "long", year: "numeric" });
 
   function navigate(delta: number) {
-    if (mode === "week") return setAnchor(shiftDays(current, delta * 7));
+    if (mode === "week") return setAnchor(shiftDays(current, delta * (dayRange ? NARROW_DAYS : 7)));
     const next = shiftMonth(year, month, delta);
     setAnchor(`${next.year}-${String(next.month).padStart(2, "0")}-01`);
   }
@@ -469,18 +565,18 @@ export function ScheduleCalendar({ fetcher = defaultFetcher }: { fetcher?: Socia
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="secondary" size="sm" aria-label={`Previous ${mode}`} onClick={() => navigate(-1)}>‹</Button>
+          <Button variant="secondary" size="sm" aria-label={`Previous ${dayRange ? `${NARROW_DAYS} days` : mode}`} onClick={() => navigate(-1)}>‹</Button>
           <Button variant="secondary" size="sm" onClick={() => setAnchor(null)}>Today</Button>
-          <Button variant="secondary" size="sm" aria-label={`Next ${mode}`} onClick={() => navigate(1)}>›</Button>
+          <Button variant="secondary" size="sm" aria-label={`Next ${dayRange ? `${NARROW_DAYS} days` : mode}`} onClick={() => navigate(1)}>›</Button>
           <h2 aria-live="polite" className="ml-1 text-lg font-semibold text-fg">{title}</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-mono text-xs text-muted">{timezone}</span>
           <div role="group" aria-label="Calendar view" className="flex gap-1 rounded-control border border-line bg-glass p-0.5">
             {(["month", "week"] as const).map((option) => (
-              <Button key={option} variant={mode === option ? "primary" : "ghost"} size="sm" aria-pressed={mode === option} onClick={() => setMode(option)} className="capitalize">
+              <button key={option} type="button" aria-pressed={mode === option} onClick={() => setMode(option)} className={segmentClasses(mode === option)}>
                 {option}
-              </Button>
+              </button>
             ))}
           </div>
           <Button variant="secondary" size="sm" disabled={state.kind === "loading"} onClick={refresh}>Refresh</Button>

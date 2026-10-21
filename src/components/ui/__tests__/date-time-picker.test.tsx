@@ -73,3 +73,25 @@ test("explains a DST gap instead of showing a UTC time", () => {
   assert.match(html, /does not exist or is ambiguous/);
   assert.doesNotMatch(html, / UTC</);
 });
+
+test("disables Previous month while viewing the current month", () => {
+  const html = renderToStaticMarkup(
+    <DateTimePicker label="Publish date" value={null} onChange={noop} now={now} timezone="UTC" />,
+  );
+  assert.match(html, /<button[^>]*aria-label="Previous month"[^>]*disabled=""/);
+  assert.doesNotMatch(html, /<button[^>]*aria-label="Next month"[^>]*disabled=""/);
+
+  const november = renderToStaticMarkup(
+    <DateTimePicker label="Publish date" value={{ localDateTime: "2026-11-10T09:00:00", timezone: "UTC" }} onChange={noop} now={now} />,
+  );
+  assert.doesNotMatch(november, /<button[^>]*aria-label="Previous month"[^>]*disabled=""/);
+});
+
+test("notes when best times are unavailable and stays quiet while they load", () => {
+  const render = (slots: readonly PublishSlot[] | null) =>
+    renderToStaticMarkup(<DateTimePicker label="Publish date" value={null} onChange={noop} now={now} timezone="UTC" bestSlots={slots} />);
+
+  assert.match(render([]), /Best times unavailable/);
+  assert.doesNotMatch(render(null), /Best time/);
+  assert.doesNotMatch(render(bestSlots), /Best times unavailable/);
+});

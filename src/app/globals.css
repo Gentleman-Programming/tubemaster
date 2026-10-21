@@ -14,7 +14,7 @@
   /* Text */
   --color-fg: #f6eff3;
   --color-subtle: #a78e9b;
-  --color-muted: #76616b;
+  --color-muted: #968089; /* 4.68:1 on surface-2, still dimmer than subtle (5.69:1). */
   --color-dim: #b99aa9;
 
   /* Accents */

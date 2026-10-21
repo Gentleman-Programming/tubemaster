@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { SocialPost } from "@/lib/social/contracts";
 import {
+  buildDayRange,
   buildMonthGrid,
   buildWeekView,
+  nextSlotCell,
   composerHref,
   formatDayLabel,
   shiftDays,
@@ -216,4 +218,28 @@ test("composerHref encodes the local time and timezone", () => {
 
 test("formatDayLabel spells out the full date independent of the host timezone", () => {
   assert.equal(formatDayLabel("2026-10-21"), "Wednesday, October 21, 2026");
+});
+
+test("buildDayRange starts on the given day for narrow screens", () => {
+  const range = buildDayRange({ start: "2026-10-21", count: 3, timezone: NY, now: NOW, items: [] });
+
+  assert.deepEqual(range.days.map((day) => day.key), ["2026-10-21", "2026-10-22", "2026-10-23"]);
+  assert.equal(range.days[0].isToday, true);
+  assert.equal(range.days[0].hours.length, 24);
+});
+
+test("nextSlotCell moves along rows and columns and wraps to the closest cell", () => {
+  // Row-major cells: row 0 misses column 1, row 1 is full.
+  const cells = [{ row: 0, col: 0 }, { row: 0, col: 2 }, { row: 1, col: 0 }, { row: 1, col: 1 }, { row: 1, col: 2 }];
+
+  assert.equal(nextSlotCell(cells, 0, "ArrowRight"), 1);
+  assert.equal(nextSlotCell(cells, 1, "ArrowRight"), 2);
+  assert.equal(nextSlotCell(cells, 2, "ArrowLeft"), 1);
+  assert.equal(nextSlotCell(cells, 0, "ArrowDown"), 2);
+  assert.equal(nextSlotCell(cells, 4, "ArrowUp"), 1);
+  // Column 1 has nothing above row 1: stay put.
+  assert.equal(nextSlotCell(cells, 3, "ArrowUp"), null);
+  assert.equal(nextSlotCell(cells, 4, "Home"), 2);
+  assert.equal(nextSlotCell(cells, 2, "End"), 4);
+  assert.equal(nextSlotCell(cells, 0, "Enter"), null);
 });

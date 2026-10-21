@@ -33,8 +33,8 @@ const tableRowClasses = "font-mono text-dim transition-colors hover:bg-glass";
 
 function presetClasses(active: boolean): string {
   return cn(
-    "rounded-control px-3 py-1.5 font-mono text-xs font-medium transition-colors",
-    active ? "bg-rose text-canvas shadow-button" : "text-dim hover:bg-glass-2 hover:text-fg",
+    "shrink-0 whitespace-nowrap rounded-control border px-2.5 py-1.5 font-mono text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-rose sm:px-3",
+    active ? "border-rose/40 bg-rose/10 text-rose" : "border-transparent text-subtle hover:bg-glass-2 hover:text-fg",
   );
 }
 
@@ -202,7 +202,7 @@ export function AnalyticsDashboard() {
 
       <div className="space-y-4">
         <div
-          className="inline-flex flex-wrap gap-1 rounded-panel border border-line bg-surface p-1"
+          className="flex max-w-full gap-0.5 overflow-x-auto rounded-panel border border-line bg-surface p-1 mask-r-from-90% sm:inline-flex sm:gap-1 sm:mask-none"
           aria-label="Analytics period presets"
         >
           {(["7", "30", "90"] as const).map((value) => (

@@ -4,7 +4,9 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import {
   bestSlotHighlights,
   buildPickerMonth,
+  canShowPreviousMonth,
   composeLocalDateTime,
+  defaultTimeForDay,
   fetchBestSlots,
   formatDayLabel,
   formatMonthLabel,
@@ -35,7 +37,8 @@ export type DateTimePickerProps = {
   /** Timezone used while nothing is picked; defaults to the browser timezone. */
   timezone?: string;
   onTimezoneChange?: (timezone: string) => void;
-  bestSlots?: readonly Pick<PublishSlot, "weekday" | "startHour" | "endHour">[];
+  /** Best publish slots; `null` while loading (no legend), `[]` when unavailable (muted note). */
+  bestSlots?: readonly Pick<PublishSlot, "weekday" | "startHour" | "endHour">[] | null;
   disabled?: boolean;
   /** Fixed clock for tests; the live clock is used otherwise. */
   now?: Date;
@@ -48,8 +51,8 @@ const WEEKDAY_HEADERS = [
 
 const NAVIGATION_DAYS: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
 
-/** Loads best publish slots for the timezone while `enabled`; failures leave the picker without highlights. */
-export function useBestPublishSlots(timezone: string | null, enabled: boolean, fetcher?: BestSlotsFetcher): PublishSlot[] {
+/** Loads best publish slots for the timezone while `enabled`: null until loaded, `[]` when unavailable. */
+export function useBestPublishSlots(timezone: string | null, enabled: boolean, fetcher?: BestSlotsFetcher): PublishSlot[] | null {
   const [slots, setSlots] = useState<{ timezone: string; slots: PublishSlot[] } | null>(null);
   useEffect(() => {
     if (!enabled || !timezone || slots?.timezone === timezone) return;
@@ -61,7 +64,7 @@ export function useBestPublishSlots(timezone: string | null, enabled: boolean, f
       active = false;
     };
   }, [enabled, timezone, fetcher, slots?.timezone]);
-  return slots?.timezone === timezone ? slots.slots : [];
+  return slots?.timezone === timezone ? slots.slots : null;
 }
 
 export function DateTimePicker({
@@ -119,14 +122,9 @@ export function DateTimePicker({
   }
 
   function pickDay(key: string) {
-    const options = timeOptionsForDay(key, context);
-    const enabled = options.filter((option) => !option.disabled);
-    const time =
-      enabled.find((option) => option.value === selected?.time)?.value ??
-      enabled.find((option) => option.recommended)?.value ??
-      enabled[0]?.value ??
-      selected?.time ??
-      "09:00";
+    // An already chosen time is kept when it is still free on the new day.
+    const kept = timeOptionsForDay(key, context).find((option) => option.value === selected?.time && !option.disabled);
+    const time = kept?.value ?? defaultTimeForDay(key, context);
     setFocusedKey(key);
     emit(key, time);
   }
@@ -161,14 +159,14 @@ export function DateTimePicker({
   }
 
   return (
-    <div className="space-y-3 rounded-panel border border-line bg-glass p-3">
-      <div className="flex flex-col gap-4 md:flex-row">
+    <div className="space-y-3 rounded-panel border border-line bg-glass p-3 md:w-fit md:max-w-full">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start">
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <button
               type="button"
               aria-label="Previous month"
-              disabled={disabled}
+              disabled={disabled || !canShowPreviousMonth(view, context)}
               onClick={() => setView(shiftPickerMonth(view, -1))}
               className="inline-flex size-8 items-center justify-center rounded-control text-dim transition-colors hover:bg-glass-2 hover:text-fg disabled:opacity-50"
             >
@@ -234,7 +232,7 @@ export function DateTimePicker({
             </tbody>
           </table>
         </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-3">
+        <div className="flex min-w-0 flex-1 flex-col gap-3 md:w-72 md:flex-none">
           <Select
             aria-label={timeLabel}
             value={selected?.time ?? ""}
@@ -252,11 +250,13 @@ export function DateTimePicker({
           <Select aria-label={timezoneLabel} value={timezone} disabled={disabled} onChange={(event) => changeTimezone(event.target.value)} className="font-mono">
             {timezoneOptions(timezone).map((zone) => <option key={zone} value={zone}>{zone}</option>)}
           </Select>
-          {highlights && (
+          {highlights ? (
             <p className="flex items-center gap-2 text-xs text-subtle">
               <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-rose" />
               <span><span className="font-medium text-rose">Best time</span> — recommended from your channel&apos;s best publish times.</span>
             </p>
+          ) : (
+            bestSlots?.length === 0 && <p className="text-xs text-muted">Best times unavailable</p>
           )}
           <div aria-live="polite" className="space-y-0.5 text-sm">
             {!value && <p className="text-subtle">Pick a day and time.</p>}

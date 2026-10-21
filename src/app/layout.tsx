@@ -30,6 +30,8 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      // Browser extensions (e.g. Dark Reader) inject attributes on <html> before hydration.
+      suppressHydrationWarning
       className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased dark`}
     >
       <body className="min-h-full bg-canvas font-sans text-fg">

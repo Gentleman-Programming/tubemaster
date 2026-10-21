@@ -26,7 +26,7 @@ type Tab = "manual" | "rules";
 
 const tabClasses =
   "flex-1 rounded-control px-4 font-mono text-xs uppercase tracking-wider transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose";
-const activeTabClasses = "border border-rose/30 bg-rose/10 text-rose";
+const activeTabClasses = "border border-rose/40 bg-rose/10 text-rose";
 const inactiveTabClasses = "border border-transparent text-subtle hover:bg-glass-2 hover:text-fg";
 
 export default function Dashboard() {
