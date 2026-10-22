@@ -2,8 +2,8 @@ import { resolveGoogleCredentials } from "../video-metadata/adapters/google-auth
 import { quotaClient } from "../db";
 import { createDurableQuotaAccountant } from "../quota/accountant";
 import { createYoutubeAnalyticsApi } from "./adapters/youtube-analytics-api";
-import type { AnalyticsSummaryDependencies } from "./contracts";
-import { createYoutubeAnalyticsSummaryService } from "./services";
+import type { AnalyticsRetentionDependencies, AnalyticsSummaryDependencies } from "./contracts";
+import { createYoutubeAnalyticsRetentionService, createYoutubeAnalyticsSummaryService } from "./services";
 export type {
   AnalyticsSummaryInput,
   AnalyticsDayRow,
@@ -12,7 +12,22 @@ export type {
   AnalyticsSummaryError,
   AnalyticsSummaryResponse,
   AnalyticsSummaryErrorCode,
+  AnalyticsRetentionRow,
+  AnalyticsRetentionResult,
+  AnalyticsRetentionError,
+  AnalyticsRetentionResponse,
 } from "./contracts";
+
+export function createYoutubeAnalyticsRetention(
+  deps?: Partial<AnalyticsRetentionDependencies>,
+) {
+  const service = createYoutubeAnalyticsRetentionService({
+    ...deps,
+    authResolver: deps?.authResolver ?? { resolve: resolveGoogleCredentials },
+    youtubeAnalyticsApi: deps?.youtubeAnalyticsApi ?? createYoutubeAnalyticsApi(),
+  });
+  return { fetchAnalyticsRetention: service };
+}
 
 export function createYoutubeAnalyticsSummary(
   deps?: Partial<AnalyticsSummaryDependencies>,

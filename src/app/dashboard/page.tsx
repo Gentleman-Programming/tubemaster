@@ -8,7 +8,6 @@ import { RuleList } from "@/components/rule-list";
 import { RunButton } from "@/components/run-button";
 import { ManualMode } from "@/components/manual-mode";
 import { TranscriptDashboard } from "@/components/transcript-dashboard";
-import { AnalyticsDashboard } from "@/components/analytics-dashboard";
 import { BestPublishTimesPanel } from "@/components/best-publish-times-panel";
 import { cn } from "@/lib/cn";
 
@@ -67,7 +66,6 @@ export default function Dashboard() {
   return (
     <main className="space-y-6">
       <h1 className="text-2xl font-semibold tracking-tight text-fg">Dashboard</h1>
-      <AnalyticsDashboard />
       <BestPublishTimesPanel />
       <TranscriptDashboard />
 

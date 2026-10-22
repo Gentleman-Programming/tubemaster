@@ -4,6 +4,7 @@ import type { ResolvedCredentials } from "../../video-metadata/contracts";
 import type {
   AnalyticsDayRow,
   AnalyticsMetricRow,
+  AnalyticsRetentionRow,
   AnalyticsTrafficSourceRow,
 } from "../contracts";
 
@@ -17,6 +18,7 @@ type QueryArgs = {
   startDate: string;
   endDate: string;
 };
+type RetentionQueryArgs = QueryArgs & { videoId: string };
 
 function responseData(response: ProviderResponse): Response {
   return "data" in response ? (response.data as Response) : response;
@@ -109,6 +111,29 @@ export function createYoutubeAnalyticsApi(
         if (!date) throw new DomainError({ code: "unauthorized", message: "Malformed analytics response" });
         return { date, ...metrics(value) };
       });
+    },
+    queryRetention(args: RetentionQueryArgs): Promise<AnalyticsRetentionRow[]> {
+      return run(
+        args,
+        {
+          ids: "channel==MINE",
+          startDate: args.startDate,
+          endDate: args.endDate,
+          dimensions: "elapsedVideoTimeRatio",
+          metrics: "audienceWatchRatio,relativeRetentionPerformance",
+          filters: `video==${args.videoId}`,
+        },
+        "elapsedVideoTimeRatio",
+        (value) => {
+          const elapsedVideoTimeRatio = Number(value("elapsedVideoTimeRatio"));
+          const audienceWatchRatio = Number(value("audienceWatchRatio"));
+          const relativeRetentionPerformance = Number(value("relativeRetentionPerformance"));
+          if (![elapsedVideoTimeRatio, audienceWatchRatio, relativeRetentionPerformance].every(Number.isFinite)) {
+            throw new DomainError({ code: "unauthorized", message: "Malformed analytics response" });
+          }
+          return { elapsedVideoTimeRatio, audienceWatchRatio, relativeRetentionPerformance };
+        },
+      );
     },
     queryTrafficSources(args: QueryArgs): Promise<AnalyticsTrafficSourceRow[]> {
       return run(

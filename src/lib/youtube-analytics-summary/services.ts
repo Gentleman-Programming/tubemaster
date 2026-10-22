@@ -2,8 +2,10 @@ import { YOUTUBE_ANALYTICS_READ_SCOPE } from "../auth";
 import { isDomainError } from "../video-metadata/contracts";
 import type { ResolvedCredentials } from "../video-metadata/contracts";
 import type { QuotaAccountant } from "../quota/accountant";
-import { analyticsSummaryInputSchema } from "./schemas";
+import { analyticsRetentionInputSchema, analyticsSummaryInputSchema } from "./schemas";
 import type {
+  AnalyticsRetentionDependencies,
+  AnalyticsRetentionResponse,
   AnalyticsSummaryDependencies,
   AnalyticsSummaryResponse,
 } from "./contracts";
@@ -47,6 +49,42 @@ const invalid = (start: string, end: string, now: () => Date) => {
   if (s > today || e > today) return "Future date";
   return null;
 };
+
+export function createYoutubeAnalyticsRetentionService(
+  deps: AnalyticsRetentionDependencies,
+) {
+  return async (args: { credentialRef: unknown; videoId: string; startDate: string; endDate: string }): Promise<AnalyticsRetentionResponse> => {
+    const parsed = analyticsRetentionInputSchema.safeParse({ videoId: args.videoId, startDate: args.startDate, endDate: args.endDate });
+    if (!parsed.success) return { kind: "analytics-retention-error", code: "INVALID_INPUT", message: "Invalid videoId or date range" };
+    const dateError = invalid(parsed.data.startDate, parsed.data.endDate, () => new Date());
+    if (dateError) return { kind: "analytics-retention-error", code: "INVALID_INPUT", message: dateError };
+    let credentials: ResolvedCredentials;
+    try {
+      credentials = await deps.authResolver.resolve({
+        credentialRef: args.credentialRef,
+        requiredScopes: [YOUTUBE_ANALYTICS_READ_SCOPE],
+      });
+    } catch (err) {
+      return isDomainError(err) && err.code === "AUTH_SCOPE_INSUFFICIENT"
+        ? { kind: "analytics-retention-error", code: "AUTH_SCOPE_INSUFFICIENT", message: "Reauthorization with the yt-analytics.readonly scope is required.", requiredScopes: ["yt-analytics.readonly"] }
+        : { kind: "analytics-retention-error", code: "AUTH_REQUIRED", message: "Authentication required" };
+    }
+    try {
+      return {
+        kind: "analytics-retention",
+        videoId: parsed.data.videoId,
+        rows: await deps.youtubeAnalyticsApi.queryRetention({
+          credentials,
+          videoId: parsed.data.videoId,
+          startDate: parsed.data.startDate,
+          endDate: parsed.data.endDate,
+        }),
+      };
+    } catch {
+      return { kind: "analytics-retention-error", code: "ANALYTICS_API_ERROR", message: "YouTube Analytics request failed" };
+    }
+  };
+}
 
 export function createYoutubeAnalyticsSummaryService(
   deps: AnalyticsSummaryDependencies,
