@@ -132,6 +132,36 @@ test("queries and normalizes traffic-source rows", async () => {
   ]);
 });
 
+test("queries and normalizes audience retention for one video", async () => {
+  const result: Mock = {
+    response: {
+      columnHeaders: [
+        { name: "elapsedVideoTimeRatio" },
+        { name: "audienceWatchRatio" },
+        { name: "relativeRetentionPerformance" },
+      ],
+      rows: [["0.25", "0.82", "0.74"]],
+    },
+  };
+  const rows = await createYoutubeAnalyticsApi(call(result)).queryRetention({
+    ...query,
+    videoId: "video-1",
+  });
+  assert.deepEqual(result.args, {
+    ids: "channel==MINE",
+    startDate: query.startDate,
+    endDate: query.endDate,
+    dimensions: "elapsedVideoTimeRatio",
+    metrics: "audienceWatchRatio,relativeRetentionPerformance",
+    filters: "video==video-1",
+  });
+  assert.deepEqual(rows, [{
+    elapsedVideoTimeRatio: 0.25,
+    audienceWatchRatio: 0.82,
+    relativeRetentionPerformance: 0.74,
+  }]);
+});
+
 test("sanitizes 403, 5xx, and network provider failures", async () => {
   for (const failure of [
     Object.assign(new Error("forbidden secret"), { response: { status: 403 } }),

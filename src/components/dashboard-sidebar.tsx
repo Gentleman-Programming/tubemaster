@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 
 const links = [
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/dashboard/analytics", label: "Analytics" },
   { href: "/dashboard/upload", label: "Private upload" },
   { href: "/dashboard/quota", label: "Quota usage" },
   { href: "/dashboard/social", label: "Social publishing" },

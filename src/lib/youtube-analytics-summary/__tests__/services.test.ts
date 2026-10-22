@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { DomainError } from "../../video-metadata/contracts";
-import { createYoutubeAnalyticsSummaryService } from "../services";
+import { createYoutubeAnalyticsRetentionService, createYoutubeAnalyticsSummaryService } from "../services";
 import { createYoutubeAnalyticsApi } from "../adapters/youtube-analytics-api";
-import type { AnalyticsSummaryDependencies } from "../contracts";
+import type { AnalyticsRetentionDependencies, AnalyticsSummaryDependencies } from "../contracts";
 
 const args = {
   credentialRef: { userId: "u1" },
@@ -171,6 +171,34 @@ test("records quota for success and failure, isolating accountant errors", async
     }),
     "analytics-summary",
   );
+});
+
+test("validates and forwards retention date ranges", async () => {
+  let received: { videoId: string; startDate: string; endDate: string } | undefined;
+  const deps: AnalyticsRetentionDependencies = {
+    authResolver: base.authResolver,
+    youtubeAnalyticsApi: {
+      queryRetention: async ({ videoId, startDate, endDate }) => {
+        received = { videoId, startDate, endDate };
+        return [];
+      },
+    },
+  };
+  const result = await createYoutubeAnalyticsRetentionService(deps)({
+    credentialRef: args.credentialRef,
+    videoId: "video-1",
+    startDate: "2025-01-01",
+    endDate: "2025-01-31",
+  });
+  assert.equal(result.kind, "analytics-retention");
+  assert.deepEqual(received, { videoId: "video-1", startDate: "2025-01-01", endDate: "2025-01-31" });
+  const invalid = await createYoutubeAnalyticsRetentionService(deps)({
+    credentialRef: args.credentialRef,
+    videoId: "video-1",
+    startDate: "2025-02-01",
+    endDate: "2025-01-31",
+  });
+  assert.deepEqual(invalid, { kind: "analytics-retention-error", code: "INVALID_INPUT", message: "startDate must be <= endDate" });
 });
 
 test("maps malformed provider rows to a typed service error", async () => {
