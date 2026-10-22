@@ -7,8 +7,16 @@ test("provides one stable default video fetcher for the loading effect", () => {
   assert.strictEqual(defaultRetentionFetcher, defaultRetentionFetcher);
 });
 
-test("defaults old videos to a valid 90-day period and keeps recent videos within publication dates", () => {
+test("builds each preset and keeps recent videos within publication dates", () => {
   const now = new Date("2026-10-22T12:00:00.000Z");
+  assert.deepEqual(dateRangeForPreset("7", now, "2025-04-30T00:00:00.000Z"), {
+    startDate: "2026-10-16",
+    endDate: "2026-10-22",
+  });
+  assert.deepEqual(dateRangeForPreset("30", now, "2025-04-30T00:00:00.000Z"), {
+    startDate: "2026-09-23",
+    endDate: "2026-10-22",
+  });
   assert.deepEqual(dateRangeForPreset("90", now, "2025-04-30T00:00:00.000Z"), {
     startDate: "2026-07-25",
     endDate: "2026-10-22",
