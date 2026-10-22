@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { AnalyticsRetentionResult, AnalyticsRetentionRow } from "@/lib/youtube-analytics-summary";
 import { Button, Card, EmptyState, FieldError, Input, Label, Select, SectionHeader } from "@/components/ui";
+import { cn } from "@/lib/cn";
 
 type Video = { videoId: string; title: string; publishedAt?: string };
 type Fetcher = (url: string) => Promise<Response>;
@@ -29,6 +30,13 @@ export function dateRangeForPreset(
 
 function dateRangeForVideo(video: Video): { startDate: string; endDate: string } {
   return dateRangeForPreset("90", new Date(), video.publishedAt);
+}
+
+function presetClasses(active: boolean): string {
+  return cn(
+    "shrink-0 whitespace-nowrap rounded-control border px-2.5 py-1.5 font-mono text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-rose sm:px-3",
+    active ? "border-rose/40 bg-rose/10 text-rose" : "border-transparent text-subtle hover:bg-glass-2 hover:text-fg",
+  );
 }
 
 export function validateRetentionDateRange(startDate: string, endDate: string, today = formatDate(new Date())): string | null {
@@ -91,13 +99,18 @@ export function AnalyticsRetentionDashboard({ fetcher = defaultRetentionFetcher 
     return () => { active = false; };
   }, [fetcher]);
 
-  const loadRetention = async () => {
-    if (!videoId || !startDate || !endDate) return;
+  const loadRetention = async (range = { startDate, endDate }) => {
+    if (!videoId || !range.startDate || !range.endDate) return;
+    const nextDateError = validateRetentionDateRange(range.startDate, range.endDate);
+    if (nextDateError) {
+      setRetentionError(nextDateError);
+      return;
+    }
     setLoadingRetention(true);
     setRetentionError(null);
     setRetention(null);
     try {
-      setRetention(await requestVideoRetention(videoId, startDate, endDate, fetcher));
+      setRetention(await requestVideoRetention(videoId, range.startDate, range.endDate, fetcher));
     } catch (error) {
       setRetentionError(error instanceof Error ? error.message : "Unable to load video retention");
     } finally {
@@ -117,8 +130,8 @@ export function AnalyticsRetentionDashboard({ fetcher = defaultRetentionFetcher 
       )}
       {videoError && !videos.length && <FieldError>{videoError}</FieldError>}
       {videos.length > 0 && (
-        <form className="flex flex-wrap items-end gap-3" onSubmit={(event) => { event.preventDefault(); void loadRetention(); }}>
-          <div className="min-w-64 flex-1 space-y-1">
+        <div className="space-y-4">
+          <div className="min-w-64 space-y-1">
             <Label htmlFor="retention-video">Video</Label>
             <Select id="retention-video" aria-label="Select video" value={videoId} onChange={(event) => {
               const nextVideo = videos.find((video) => video.videoId === event.target.value);
@@ -134,34 +147,48 @@ export function AnalyticsRetentionDashboard({ fetcher = defaultRetentionFetcher 
               {videos.map((video) => <option key={video.videoId} value={video.videoId}>{video.title}</option>)}
             </Select>
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="retention-preset">Period</Label>
-            <Select id="retention-preset" aria-label="Retention period" value={preset} onChange={(event) => {
-              const nextPreset = event.target.value as RetentionPreset;
-              setPreset(nextPreset);
-              if (nextPreset !== "custom") {
-                const nextRange = dateRangeForPreset(nextPreset);
-                setStartDate(nextRange.startDate);
-                setEndDate(nextRange.endDate);
-              }
-            }}>
-              <option value="90">Last 90 days</option>
-              <option value="30">Last 30 days</option>
-              <option value="7">Last 7 days</option>
-              <option value="custom">Custom range</option>
-            </Select>
+          <div className="space-y-4">
+            <div
+              className="flex max-w-full gap-0.5 overflow-x-auto rounded-panel border border-line bg-surface p-1 mask-r-from-90% sm:inline-flex sm:gap-1 sm:mask-none"
+              aria-label="Retention period presets"
+            >
+              {(["7", "30", "90"] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={preset === value}
+                  onClick={() => {
+                    const nextVideo = videos.find((video) => video.videoId === videoId);
+                    const range = dateRangeForPreset(value, new Date(), nextVideo?.publishedAt);
+                    setPreset(value);
+                    setStartDate(range.startDate);
+                    setEndDate(range.endDate);
+                    void loadRetention(range);
+                  }}
+                  className={presetClasses(preset === value)}
+                >
+                  Last {value} days
+                </button>
+              ))}
+              <button type="button" aria-pressed={preset === "custom"} onClick={() => setPreset("custom")} className={presetClasses(preset === "custom")}>Custom range</button>
+            </div>
+            <form
+              className="flex flex-wrap items-end gap-3"
+              onSubmit={(event) => { event.preventDefault(); void loadRetention(); }}
+            >
+              <label className="flex flex-col gap-1 text-sm font-medium text-dim">
+                From
+                <Input id="retention-start" aria-label="Retention start date" type="date" value={startDate} max={endDate} onChange={(event) => { setPreset("custom"); setRetentionError(null); setStartDate(event.target.value); }} className="font-mono" />
+              </label>
+              <label className="flex flex-col gap-1 text-sm font-medium text-dim">
+                To
+                <Input id="retention-end" aria-label="Retention end date" type="date" value={endDate} max={formatDate(new Date())} onChange={(event) => { setPreset("custom"); setRetentionError(null); setEndDate(event.target.value); }} className="font-mono" />
+              </label>
+              <Button type="submit" disabled={!videoId || !startDate || !endDate || Boolean(dateError) || loadingRetention}>Apply range</Button>
+              {dateError && <FieldError>{dateError}</FieldError>}
+            </form>
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="retention-start">From</Label>
-            <Input id="retention-start" aria-label="Retention start date" type="date" value={startDate} max={endDate} onChange={(event) => { setPreset("custom"); setRetentionError(null); setStartDate(event.target.value); }} />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="retention-end">To</Label>
-            <Input id="retention-end" aria-label="Retention end date" type="date" value={endDate} max={formatDate(new Date())} onChange={(event) => { setPreset("custom"); setRetentionError(null); setEndDate(event.target.value); }} />
-          </div>
-          <Button type="submit" disabled={!videoId || !startDate || !endDate || Boolean(dateError) || loadingRetention}>Load retention</Button>
-          {dateError && <FieldError>{dateError}</FieldError>}
-        </form>
+        </div>
       )}
       {loadingRetention && <p role="status" className="font-mono text-sm text-subtle">Loading video retention…</p>}
       {retentionError && <FieldError>{retentionError}</FieldError>}
