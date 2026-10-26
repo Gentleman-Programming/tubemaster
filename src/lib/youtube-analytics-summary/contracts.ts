@@ -53,6 +53,49 @@ export type AnalyticsSummaryError = {
 export type AnalyticsSummaryResponse =
   | AnalyticsSummaryResult
   | AnalyticsSummaryError;
+export type AnalyticsReportVideo = {
+  videoId: string;
+  title: string;
+  description: string;
+  publishedAt: string;
+};
+export type AnalyticsReportResult = {
+  kind: "analytics-multi-video-report";
+  startDate: string;
+  endDate: string;
+  videos: Array<{
+    videoId: string;
+    title: string;
+    current: AnalyticsMetricRow;
+    previous: AnalyticsMetricRow;
+    deltas: {
+      views: { absolute: number; percentage: number | null };
+      likes: { absolute: number; percentage: number | null };
+      comments: { absolute: number; percentage: number | null };
+      estimatedMinutesWatched: { absolute: number; percentage: number | null };
+    };
+  }>;
+  totals: AnalyticsMetricRow;
+};
+export type AnalyticsReportError = {
+  kind: "analytics-multi-video-report-error";
+  code: AnalyticsSummaryErrorCode;
+  message: string;
+  requiredScopes?: ["yt-analytics.readonly"];
+};
+export type AnalyticsReportResponse = AnalyticsReportResult | AnalyticsReportError;
+export type AnalyticsReportDependencies = {
+  authResolver: AnalyticsSummaryDependencies["authResolver"];
+  youtubeAnalyticsApi: {
+    queryVideoSummary(args: {
+      credentials: ResolvedCredentials;
+      videoId: string;
+      startDate: string;
+      endDate: string;
+    }): Promise<AnalyticsMetricRow>;
+  };
+  now?: () => Date;
+};
 export type AnalyticsRetentionDependencies = {
   authResolver: {
     resolve(args: {
@@ -82,6 +125,12 @@ export type AnalyticsSummaryDependencies = {
       startDate: string;
       endDate: string;
     }): Promise<AnalyticsDayRow[]>;
+    queryVideoSummary?: (args: {
+      credentials: ResolvedCredentials;
+      videoId: string;
+      startDate: string;
+      endDate: string;
+    }) => Promise<AnalyticsMetricRow>;
     queryTrafficSources?: (args: {
       credentials: ResolvedCredentials;
       startDate: string;

@@ -5,9 +5,10 @@ import { redirect } from "next/navigation";
 import { useState } from "react";
 import { AnalyticsDashboard } from "@/components/analytics-dashboard";
 import { AnalyticsRetentionDashboard } from "@/components/analytics-retention-dashboard";
+import { AnalyticsMultiVideoReport } from "@/components/analytics-multi-video-report";
 import { Button, Card } from "@/components/ui";
 
-type AnalyticsTab = "summary" | "retention";
+type AnalyticsTab = "summary" | "retention" | "multi-video";
 
 export default function AnalyticsPage() {
   const { status } = useSession();
@@ -26,8 +27,9 @@ export default function AnalyticsPage() {
         <div className="flex h-10 items-stretch gap-1 rounded-panel border border-line bg-panel/40 p-1" aria-label="Analytics tabs">
           <Button variant={tab === "summary" ? "primary" : "ghost"} className="flex-1" aria-pressed={tab === "summary"} onClick={() => setTab("summary")}>Channel analytics</Button>
           <Button variant={tab === "retention" ? "primary" : "ghost"} className="flex-1" aria-pressed={tab === "retention"} onClick={() => setTab("retention")}>Video retention</Button>
+          <Button variant={tab === "multi-video" ? "primary" : "ghost"} className="flex-1" aria-pressed={tab === "multi-video"} onClick={() => setTab("multi-video")}>Multi-video report</Button>
         </div>
-        {tab === "summary" ? <AnalyticsDashboard /> : <AnalyticsRetentionDashboard />}
+        {tab === "summary" ? <AnalyticsDashboard /> : tab === "retention" ? <AnalyticsRetentionDashboard /> : <AnalyticsMultiVideoReport />}
       </Card>
     </main>
   );

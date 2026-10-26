@@ -40,6 +40,10 @@ const trafficSourceParams = (startDate: string, endDate: string) => ({
   dimensions: "insightTrafficSourceType",
   sort: "-views",
 });
+const videoSummaryParams = (videoId: string, startDate: string, endDate: string) => ({
+  ...baseParams(startDate, endDate),
+  filters: `video==${videoId}`,
+});
 
 export function createYoutubeAnalyticsApi(
   factory?: () => {
@@ -103,7 +107,22 @@ export function createYoutubeAnalyticsApi(
       });
     }
   };
+  const runMetric = async (args: QueryArgs, params: Record<string, unknown>): Promise<AnalyticsMetricRow> => {
+    try {
+      const data = responseData(await request(args, params));
+      const row = data.rows?.[0];
+      if (!row) return { views: 0, likes: 0, comments: 0, estimatedMinutesWatched: 0 };
+      const headers = new Map((data.columnHeaders ?? []).map((header, index) => [header.name, index]));
+      return metrics((name) => row[headers.get(name) ?? -1]);
+    } catch (err) {
+      if (err instanceof DomainError) throw err;
+      throw new DomainError({ code: "unauthorized", message: "YouTube Analytics request failed" });
+    }
+  };
   return {
+    queryVideoSummary(args: QueryArgs & { videoId: string }): Promise<AnalyticsMetricRow> {
+      return runMetric(args, videoSummaryParams(args.videoId, args.startDate, args.endDate));
+    },
     query(args: QueryArgs): Promise<AnalyticsDayRow[]> {
       return run(args, dayParams(args.startDate, args.endDate), "day", (value) => {
         const rawDate = value("day");

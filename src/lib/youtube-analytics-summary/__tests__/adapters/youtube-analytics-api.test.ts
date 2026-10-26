@@ -83,6 +83,29 @@ test("normalizes the native Google response data envelope", async () => {
   ]);
 });
 
+test("queries one video's aggregate metrics with a bounded filter", async () => {
+  const result: Mock = {
+    response: {
+      columnHeaders: [
+        { name: "views" },
+        { name: "likes" },
+        { name: "comments" },
+        { name: "estimatedMinutesWatched" },
+      ],
+      rows: [["14", "4", "2", "8.5"]],
+    },
+  };
+  const row = await createYoutubeAnalyticsApi(call(result)).queryVideoSummary({ ...query, videoId: "video-1" });
+  assert.deepEqual(result.args, {
+    ids: "channel==MINE",
+    startDate: query.startDate,
+    endDate: query.endDate,
+    metrics: "views,likes,comments,estimatedMinutesWatched",
+    filters: "video==video-1",
+  });
+  assert.deepEqual(row, { views: 14, likes: 4, comments: 2, estimatedMinutesWatched: 8.5 });
+});
+
 test("normalizes missing rows to empty and rejects provider errors", async () => {
   assert.deepEqual(
     await createYoutubeAnalyticsApi(call({ response: { rows: null } })).query(

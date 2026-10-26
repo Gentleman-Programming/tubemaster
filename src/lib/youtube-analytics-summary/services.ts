@@ -3,7 +3,16 @@ import { isDomainError } from "../video-metadata/contracts";
 import type { ResolvedCredentials } from "../video-metadata/contracts";
 import type { QuotaAccountant } from "../quota/accountant";
 import { analyticsRetentionInputSchema, analyticsSummaryInputSchema } from "./schemas";
+import { calculatePeriodComparison } from "./comparison";
+import {
+  aggregateAnalyticsMetrics,
+  calculateReportMetricDeltas,
+  validateReportVideoSelection,
+} from "../reporting/multi-video-report";
 import type {
+  AnalyticsReportDependencies,
+  AnalyticsReportResponse,
+  AnalyticsReportVideo,
   AnalyticsRetentionDependencies,
   AnalyticsRetentionResponse,
   AnalyticsSummaryDependencies,
@@ -82,6 +91,53 @@ export function createYoutubeAnalyticsRetentionService(
       };
     } catch {
       return { kind: "analytics-retention-error", code: "ANALYTICS_API_ERROR", message: "YouTube Analytics request failed" };
+    }
+  };
+}
+
+export function createYoutubeAnalyticsReportService(
+  deps: AnalyticsReportDependencies,
+) {
+  const now = deps.now ?? (() => new Date());
+  return async (args: {
+    credentialRef: unknown;
+    startDate: string;
+    endDate: string;
+    videos: AnalyticsReportVideo[];
+  }): Promise<AnalyticsReportResponse> => {
+    const selection = validateReportVideoSelection(args.videos.map(({ videoId }) => videoId), args.videos);
+    if (!selection.ok) return { kind: "analytics-multi-video-report-error", code: "INVALID_INPUT", message: selection.message };
+    const dateError = invalid(args.startDate, args.endDate, now);
+    if (dateError) return { kind: "analytics-multi-video-report-error", code: "INVALID_INPUT", message: dateError };
+    const periods = calculatePeriodComparison(args.startDate, args.endDate);
+    let credentials: ResolvedCredentials;
+    try {
+      credentials = await deps.authResolver.resolve({
+        credentialRef: args.credentialRef,
+        requiredScopes: [YOUTUBE_ANALYTICS_READ_SCOPE],
+      });
+    } catch (err) {
+      return isDomainError(err) && err.code === "AUTH_SCOPE_INSUFFICIENT"
+        ? { kind: "analytics-multi-video-report-error", code: "AUTH_SCOPE_INSUFFICIENT", message: "Reauthorization with the yt-analytics.readonly scope is required.", requiredScopes: ["yt-analytics.readonly"] }
+        : { kind: "analytics-multi-video-report-error", code: "AUTH_REQUIRED", message: "Authentication required" };
+    }
+    try {
+      const rows = await Promise.all(selection.videos.map(async (video) => {
+        const [current, previous] = await Promise.all([
+          deps.youtubeAnalyticsApi.queryVideoSummary({ credentials, videoId: video.videoId, ...periods.current }),
+          deps.youtubeAnalyticsApi.queryVideoSummary({ credentials, videoId: video.videoId, ...periods.previous }),
+        ]);
+        return { videoId: video.videoId, title: video.title, current, previous, deltas: calculateReportMetricDeltas(current, previous) };
+      }));
+      return {
+        kind: "analytics-multi-video-report",
+        startDate: periods.current.startDate,
+        endDate: periods.current.endDate,
+        videos: rows,
+        totals: aggregateAnalyticsMetrics(rows.map(({ current }) => current)),
+      };
+    } catch {
+      return { kind: "analytics-multi-video-report-error", code: "ANALYTICS_API_ERROR", message: "YouTube Analytics request failed" };
     }
   };
 }
