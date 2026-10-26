@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { dateRangeForPreset, defaultRetentionFetcher, requestVideoRetention, validateRetentionDateRange } from "./analytics-retention-dashboard";
+import { dateRangeForPreset, defaultRetentionFetcher, requestVideoRetention, retentionChartSeries, validateRetentionDateRange } from "./analytics-retention-dashboard";
 
 test("provides one stable default video fetcher for the loading effect", () => {
   assert.equal(typeof defaultRetentionFetcher, "function");
@@ -32,6 +32,19 @@ test("validates custom ranges before requesting retention", () => {
   assert.equal(validateRetentionDateRange("2026-07-24", "2026-10-22", "2026-10-22"), "Range exceeds 90 days");
   assert.equal(validateRetentionDateRange("2026-10-23", "2026-10-22", "2026-10-22"), "From date must be on or before To date");
   assert.equal(validateRetentionDateRange("2026-10-01", "2026-10-23", "2026-10-22"), "To date cannot be in the future");
+});
+
+test("sorts retention rows into chart series without changing their values", () => {
+  assert.deepEqual(
+    retentionChartSeries([
+      { elapsedVideoTimeRatio: 1, audienceWatchRatio: 0.42, relativeRetentionPerformance: 0.8 },
+      { elapsedVideoTimeRatio: 0, audienceWatchRatio: 1, relativeRetentionPerformance: 1.2 },
+    ]),
+    [
+      { elapsedVideoTimeRatio: 0, audienceWatchRatio: 1, relativeRetentionPerformance: 1.2 },
+      { elapsedVideoTimeRatio: 1, audienceWatchRatio: 0.42, relativeRetentionPerformance: 0.8 },
+    ],
+  );
 });
 
 test("requests retention for the selected video and date range", async () => {
