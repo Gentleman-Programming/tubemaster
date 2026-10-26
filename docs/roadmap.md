@@ -1,53 +1,48 @@
 # TubeMaster roadmap: guarded channel operations before automation
 
-TubeMaster is evolving from a channel-operations workspace toward agent-assisted analysis and publishing. The six phases below are priorities, not a release commitment. In particular, Shorts upload and scheduling are a **future Phase 6 proposal**, not available today; no autonomous publishing is planned.
+TubeMaster is evolving from a channel-operations workspace toward agent-assisted analysis and publishing. The six phases below are priorities, not a release commitment. Every write remains human-authorized, channel-bound, previewable where applicable, and subject to the repository's safety contracts.
 
 ## Quick path
 
 1. Check [current status](#current-status) before assuming a feature exists.
-2. Use the [phases](#phases) to locate future work.
-3. For the client's Shorts request, review the [proposal](#phase-6-proposal-agent-assisted-shorts-upload-and-scheduling) and [safety requirements](#safety-requirements) before scoping implementation.
+2. Use the [phases](#phases) to locate delivered foundations and remaining work.
+3. Review the [safety requirements](#safety-requirements) before scoping any new sensitive mutation.
 
 ## Current status
 
-**Delivered foundations:** guarded writes (`expectedChannelId`, `dryRun` where supported, and confirmations), typed errors, estimated quota visibility and observational operation logs; video selection and local JSON/CSV export, batch/preview foundations and an authenticated analytics summary API; transcript acquisition (including public acquisition and local Whisper support), timestamps and transcript UI; positioning and interface documentation; and the channel-thumbnail variant/protocol-relative URL fix. These are foundations, not a complete analytics, reporting, transcription-intelligence or publishing product. See [interface boundaries](./interfaces.md) for what each surface actually exposes. Quota estimates are not authoritative usage, and logs are not a durable audit database. The optional analytics scope requires separate authorization.
+**Delivered:** guarded channel writes with `expectedChannelId`, confirmations and `dryRun` where supported; typed errors; quota estimates and observational operation events; video selection and JSON/CSV export; batch metadata preview, confirmation, apply and execution reports; authenticated analytics summary, period comparisons, traffic-source analysis, video retention visualization and publish-time analysis; transcript acquisition through authenticated/public providers and local Whisper with timestamps; thumbnail recovery; private-first video upload with staged-file validation; scheduling preview, timezone conversion, status reads and confirmation; social publishing foundations; and interface documentation.
 
-**Future:** expanded analytics and periodic reports, semantic transcript search, editorial/SEO planning, and agent-assisted Shorts upload/scheduling remain proposed work. Existing metadata and playlist mutations do not imply an upload or publish capability.
+These are controlled foundations, not an autonomous publishing product. Analytics access requires the existing authorized analytics scope. Quota estimates are not authoritative provider balances, and observational operation events are not a durable audit database. Upload and scheduling keep channel identity, file identity, metadata, confirmation and operation outcomes explicit.
+
+**Remaining roadmap work:** durable audit/history, broader trend and Shorts-performance analytics, periodic and multi-video reporting, transcript indexing/embeddings/semantic search, editorial/SEO planning, and upload/scheduling recovery, cancellation, review-history and adapter hardening. The current feature-2 head is `ffb67a21a8c4b9917693b01f0af14d184a57d0c3`.
 
 ## Phases
 
-| Phase | Direction | Boundary |
+| Phase | Delivered | Remaining boundary |
 | --- | --- | --- |
-| 1. Secure foundation | Supported dependencies, read/write separation, channel checks, confirmations, quota and logging | Core guards and observability exist; continue hardening before adding sensitive writes. |
-| 2. Analytics | Channel/video trends, retention, traffic, Shorts performance and comparisons | Only the authenticated summary API exists; expanded analysis is future work. |
-| 3. Reporting | Filters, multi-video analysis, reviewed batch changes, CSV/JSON and periodic reports | Selection/export and batch/preview foundations exist; periodic reports and broader workflows are future work. |
-| 4. Intelligent transcripts | Acquisition/fallback, language normalization, local indexing, embeddings and semantic search | Acquisition, local Whisper and timestamps exist; knowledge-base features are future work. |
-| 5. Editorial intelligence / SEO | Title/description suggestions, keywords, related videos, ideas and editorial calendar | Planning and optimization beyond existing metadata workflows are future work. |
-| 6. Advanced automation | Analyze → propose → preview → approve → execute → measure | Future, human-authorized actions only; includes the Shorts slice below. |
+| 1. Secure foundation | Read/write separation, channel guards, confirmations, typed errors, quota estimates and operational logging | Durable audit/history, stronger reconciliation and continued hardening before sensitive writes |
+| 2. Analytics | Authenticated summary, comparisons, traffic sources, retention and publish-time analysis | Shorts-specific performance and broader channel/video trend analysis |
+| 3. Reporting | Selection, JSON/CSV export, batch preview/apply and execution reports | Periodic reports, richer multi-video analysis and broader reviewed reporting workflows |
+| 4. Intelligent transcripts | Caption/provider fallback, authenticated/public acquisition, local Whisper and timestamps | Local indexing, embeddings and semantic search |
+| 5. Editorial intelligence / SEO | Existing metadata preview and rule-based editorial foundations | Keywords, related videos, ideas, recommendations and editorial calendar workflows |
+| 6. Advanced automation | Human-confirmed private upload and scheduling slices, including validation, preview, timezone conversion and status reads | Complete CLI/MCP adapters, review/history UI, cancellation/recovery and test-channel operational validation |
 
-## Phase 6 proposal: agent-assisted Shorts upload and scheduling
+## Phase 6: guarded Shorts upload and scheduling
 
-The client wants an agent to prepare a Short, upload it to the intended channel and schedule publication. Treat upload and scheduling as sensitive, distinct mutations rather than hiding them in metadata apply. The safe path is **select file → validate → prepare metadata → preview → confirm channel and time → upload private → schedule → verify status**. Approval must be bound to that specific file, channel, metadata and schedule, and obtained immediately before mutation.
+The private-upload and scheduling slices are implemented as distinct sensitive mutations. The safe path is **select file → validate → prepare metadata → preview → confirm channel and time → upload private → schedule → verify status**. Approval is bound to the staged file, channel, metadata and schedule immediately before mutation.
 
-The proposed contract accepts an authorized video file plus title, description, tags, category, language and privacy settings. Validate format, codec, size, duration and applicable current Shorts orientation/aspect-ratio rules; verify platform support before promising custom thumbnails. Require `expectedChannelId` on every write and offer `dryRun` that checks inputs and previews the action without uploading or publishing. Upload privately first; apply metadata and any supported thumbnail or playlist association as separately reviewable steps. Scheduling accepts `publishAt` with an explicit timezone, displays its UTC conversion, rejects ambiguous or past times, and keeps the video private until the authorized publication time. Query status and allow cancellation or return to private where the platform permits it; distinguish a cancelled schedule from an already published video.
+Implemented safeguards include bounded staging, path and file validation, `expectedChannelId`, private-only upload, dry-run validation, confirmation tokens, quota accounting, safe provider errors, uncertain-outcome handling, timezone conversion, stale-preview rejection and read-only scheduled-status queries. No one-call autonomous publish operation exists.
 
-Expose preparation, validation, preview, upload, scheduling, status and cancellation as separate MCP tools and equivalent CLI commands. Read/status calls must not mutate. Do not expose a one-call publish tool or imply an agent's proposal constitutes human approval. Responses should identify channel, video ID when available, state, scheduled time, estimated quota cost, actionable errors and whether compensation is possible, without leaking private content.
+Remaining Phase 6 work must be separately scoped and approved: reconciliation after uncertain outcomes, cancellation/return-to-private policy where supported, complete CLI/MCP exposure, review/history UI, and operational validation on a test channel. Do not broaden this into autonomous publishing, bulk upload, or upload disguised as metadata mutation.
 
 ## Safety requirements
 
-- Use only necessary documented OAuth scopes; fail closed on missing scopes, mismatched `expectedChannelId`, stale confirmation or changed file/metadata/time. Keep upload disabled by default behind an explicit capability.
-- Constrain files to an authorized workspace; reject nonexistent, changed or out-of-bounds paths and path traversal. Define size, duration and temporary-storage limits before enabling uploads. Never log credentials, tokens, local paths or video contents.
-- Make retries idempotent or reconcile by operation identity and remote state. A timeout must never trigger a blind second upload. Record partial outcomes and provide recoverable status.
-- Estimate and observe quota for `videos.insert` and separate metadata, thumbnail and playlist operations; do not present estimates as Google's authoritative remaining quota.
-- Define cancellation, retry and timezone policy; log who approved which channel, file identity and publication time without sensitive payloads. Reconfirm any changed candidate; measure the final outcome.
-
-## Implementation order
-
-1. Agree on states (`draft`, `validated`, `uploading`, `uploaded-private`, `scheduled`, `published`, `cancelled`, `failed`), authorization boundaries and operation identity.
-2. Add local validation and side-effect-free `dryRun`/preview; test malformed files, stale approvals and wrong channels.
-3. Add confirmed single-video private upload with reconciliation after timeouts; keep metadata, thumbnail and playlist actions separate.
-4. Add `publishAt` scheduling, timezone conversion, status and cancellation/recovery rules.
-5. Expose separate CLI/MCP operations and a review/history UI; exercise quota, scope failures, retries and cancellation on a test channel before production enablement.
+- Use only necessary documented OAuth scopes; fail closed on missing scopes, mismatched `expectedChannelId`, stale confirmation or changed file/metadata/time.
+- Constrain files to an authorized workspace; reject nonexistent, changed, symlinked or out-of-bounds paths and path traversal. Never log credentials, tokens, local paths or video contents.
+- Make retries idempotent or reconcile by operation identity and remote state. A timeout must never trigger a blind second upload.
+- Estimate and observe quota for upload and related operations without presenting estimates as Google's authoritative balance.
+- Keep preparation, validation, preview, upload, scheduling, status and cancellation separately reviewable. Read/status calls must not mutate.
+- Record only safe operational context, preserve actionable errors, and keep compensation/recovery explicit.
 
 ## Non-goals
 
@@ -55,4 +50,4 @@ No autonomous publishing, bulk Shorts upload without per-item preview and confir
 
 ## Next step
 
-Review the Phase 6 contract and safety gates with the client, then scope small, approved implementation slices; keep expanded analytics, reporting, transcript intelligence and SEO on their respective phase tracks. No runtime change is part of this documentation update.
+Choose one focused, approved slice from the remaining boundaries, starting with documentation-backed hardening or reporting/transcript intelligence. Keep each slice on its own branch and PR with applicable tests, validation evidence and explicit merge authorization. This documentation update makes no runtime change.
