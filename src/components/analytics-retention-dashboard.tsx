@@ -36,6 +36,10 @@ export function retentionChartSeries(rows: readonly AnalyticsRetentionRow[]): An
   return [...rows].sort((a, b) => a.elapsedVideoTimeRatio - b.elapsedVideoTimeRatio);
 }
 
+function formatRatioAsPercent(value: number): string {
+  return `${(value * 100).toFixed(1)}%`;
+}
+
 function presetClasses(active: boolean): string {
   return cn(
     "shrink-0 whitespace-nowrap rounded-control border px-2.5 py-1.5 font-mono text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-rose sm:px-3",
@@ -217,6 +221,9 @@ function RetentionChart({ rows }: { rows: readonly AnalyticsRetentionRow[] }) {
   const plotWidth = width - left - right;
   const plotHeight = height - top - bottom;
   const relativeValues = series.map((row) => row.relativeRetentionPerformance);
+  const audienceAverage = series.reduce((sum, row) => sum + row.audienceWatchRatio, 0) / series.length;
+  const firstPoint = series[0];
+  const lastPoint = series[series.length - 1];
   const relativeMin = Math.min(...relativeValues);
   const relativeMax = Math.max(...relativeValues);
   const relativeSpan = relativeMax - relativeMin || 1;
@@ -229,11 +236,28 @@ function RetentionChart({ rows }: { rows: readonly AnalyticsRetentionRow[] }) {
 
   return (
     <figure className="space-y-3 rounded-panel border border-line bg-surface p-4" aria-labelledby={`${chartId}-title`}>
-      <figcaption id={`${chartId}-title`} className="text-sm font-semibold text-fg">Audience retention curve</figcaption>
+      <figcaption id={`${chartId}-title`} className="text-lg font-semibold text-fg">Audience retention curve</figcaption>
       <p id={`${chartId}-description`} className="sr-only">Audience watch ratio and relative retention performance plotted against elapsed video time.</p>
+      <div className="grid gap-3 sm:grid-cols-3" aria-label="Retention chart summary">
+        <div className="rounded-panel border border-line bg-glass p-3">
+          <p className="font-mono text-xs uppercase tracking-widest text-muted">Start audience</p>
+          <p className="mt-1 font-mono text-xl font-semibold text-fg">{formatRatioAsPercent(firstPoint.audienceWatchRatio)}</p>
+        </div>
+        <div className="rounded-panel border border-line bg-glass p-3">
+          <p className="font-mono text-xs uppercase tracking-widest text-muted">Average audience</p>
+          <p className="mt-1 font-mono text-xl font-semibold text-fg">{formatRatioAsPercent(audienceAverage)}</p>
+        </div>
+        <div className="rounded-panel border border-line bg-glass p-3">
+          <p className="font-mono text-xs uppercase tracking-widest text-muted">End audience</p>
+          <p className="mt-1 font-mono text-xl font-semibold text-fg">{formatRatioAsPercent(lastPoint.audienceWatchRatio)}</p>
+        </div>
+      </div>
       <svg className="h-auto w-full" viewBox={`0 0 ${width} ${height}`} role="img" aria-labelledby={`${chartId}-title ${chartId}-description`}>
-        {[0, 0.5, 1].map((value) => (
-          <line key={value} x1={left} x2={width - right} y1={audienceY(value)} y2={audienceY(value)} stroke="currentColor" className="text-line" strokeDasharray="3 5" />
+        {[0, 0.25, 0.5, 0.75, 1].map((value) => (
+          <g key={value}>
+            <line x1={left} x2={width - right} y1={audienceY(value)} y2={audienceY(value)} stroke="currentColor" className="text-line" strokeDasharray="3 5" />
+            <text x={left - 8} y={audienceY(value) + 4} textAnchor="end" className="fill-muted font-mono text-[11px]">{formatRatioAsPercent(value)}</text>
+          </g>
         ))}
         <line x1={left} x2={left} y1={top} y2={height - bottom} stroke="currentColor" className="text-muted" />
         <line x1={left} x2={width - right} y1={height - bottom} y2={height - bottom} stroke="currentColor" className="text-muted" />
@@ -251,14 +275,14 @@ function RetentionChart({ rows }: { rows: readonly AnalyticsRetentionRow[] }) {
         ))}
         <text x={left} y={height - 12} className="fill-muted font-mono text-[11px]">0%</text>
         <text x={width - right} y={height - 12} textAnchor="end" className="fill-muted font-mono text-[11px]">100% elapsed</text>
-        <text x={left - 8} y={top + 4} textAnchor="end" className="fill-muted font-mono text-[11px]">100%</text>
-        <text x={left - 8} y={height - bottom + 4} textAnchor="end" className="fill-muted font-mono text-[11px]">0%</text>
         <text x={width - right + 8} y={top + 4} className="fill-mint font-mono text-[11px]">{relativeMax.toFixed(2)}</text>
         <text x={width - right + 8} y={height - bottom + 4} className="fill-mint font-mono text-[11px]">{relativeMin.toFixed(2)}</text>
+        <text x={left} y={top - 10} className="fill-rose font-mono text-[11px]">Audience watch ratio</text>
+        <text x={width - right} y={top - 10} textAnchor="end" className="fill-mint font-mono text-[11px]">Relative retention</text>
       </svg>
-      <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-subtle" aria-label="Retention chart legend">
-        <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-rose" aria-hidden="true" />Audience watch ratio</span>
-        <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-mint" aria-hidden="true" />Relative retention performance</span>
+      <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-subtle" aria-label="Retention chart legend">
+        <span className="inline-flex items-center gap-2 font-mono"><span className="h-0.5 w-5 bg-rose" aria-hidden="true" />Audience watch ratio (%)</span>
+        <span className="inline-flex items-center gap-2 font-mono"><span className="h-0.5 w-5 border-t-2 border-dashed border-mint" aria-hidden="true" />Relative retention (index)</span>
       </div>
     </figure>
   );
