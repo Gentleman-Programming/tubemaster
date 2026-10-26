@@ -125,12 +125,6 @@ export type AnalyticsSummaryDependencies = {
       startDate: string;
       endDate: string;
     }): Promise<AnalyticsDayRow[]>;
-    queryVideoSummary?: (args: {
-      credentials: ResolvedCredentials;
-      videoId: string;
-      startDate: string;
-      endDate: string;
-    }) => Promise<AnalyticsMetricRow>;
     queryTrafficSources?: (args: {
       credentials: ResolvedCredentials;
       startDate: string;
