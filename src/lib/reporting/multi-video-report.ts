@@ -1,5 +1,10 @@
 import type { AnalyticsMetricRow } from "@/lib/youtube-analytics-summary/contracts";
-import { calculateMetricDelta, type AnalyticsMetricDelta } from "@/lib/youtube-analytics-summary/comparison";
+import {
+  calculateMetricDelta,
+  calculatePeriodComparison,
+  type AnalyticsDateRange,
+  type AnalyticsMetricDelta,
+} from "@/lib/youtube-analytics-summary/comparison";
 import type { VideoMetadataItem } from "@/lib/video-metadata/contracts";
 
 export type MultiVideoReportVideo = {
@@ -22,6 +27,42 @@ export type MultiVideoReport = {
   videos: MultiVideoReportVideo[];
   totals: AnalyticsMetricRow;
 };
+
+type ReportPeriodDirection = "previous" | "next";
+const DAY_MS = 86_400_000;
+
+function parseReportDate(value: string): Date {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
+    throw new Error("Invalid date");
+  }
+  return date;
+}
+
+function formatReportDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+export function shiftReportPeriod(
+  startDate: string,
+  endDate: string,
+  direction: ReportPeriodDirection,
+  today: string | Date = new Date(),
+): AnalyticsDateRange {
+  calculatePeriodComparison(startDate, endDate);
+  const start = parseReportDate(startDate);
+  const end = parseReportDate(endDate);
+  const todayDate = typeof today === "string" ? parseReportDate(today) : today;
+  if (end > todayDate) throw new Error("Future date");
+
+  const length = Math.floor((end.getTime() - start.getTime()) / DAY_MS) + 1;
+  const offset = (direction === "next" ? 1 : -1) * length * DAY_MS;
+  const shiftedStart = new Date(start.getTime() + offset);
+  const shiftedEnd = new Date(end.getTime() + offset);
+  if (shiftedEnd > todayDate) throw new Error("Future date");
+
+  return { startDate: formatReportDate(shiftedStart), endDate: formatReportDate(shiftedEnd) };
+}
 
 export function validateReportVideoSelection(
   videoIds: readonly string[],

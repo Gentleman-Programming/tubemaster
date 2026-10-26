@@ -3,7 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button, Card, EmptyState, Input } from "@/components/ui";
 import type { AnalyticsReportResponse, AnalyticsReportResult, AnalyticsReportVideo } from "@/lib/youtube-analytics-summary";
-import { serializeMultiVideoReportCsv, serializeMultiVideoReportJson } from "@/lib/reporting/multi-video-report";
+import {
+  serializeMultiVideoReportCsv,
+  serializeMultiVideoReportJson,
+  shiftReportPeriod,
+} from "@/lib/reporting/multi-video-report";
 
 type Fetcher = (url: string) => Promise<Response>;
 type Video = AnalyticsReportVideo;
@@ -74,6 +78,25 @@ export function AnalyticsMultiVideoReport() {
       return next;
     });
   };
+  const shiftPeriod = (direction: "previous" | "next") => {
+    try {
+      const shifted = shiftReportPeriod(startDate, endDate, direction);
+      setStartDate(shifted.startDate);
+      setEndDate(shifted.endDate);
+      setReport(null);
+      setErrorMessage(null);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to change reporting period");
+    }
+  };
+  const canMoveToNextPeriod = useMemo(() => {
+    try {
+      shiftReportPeriod(startDate, endDate, "next");
+      return true;
+    } catch {
+      return false;
+    }
+  }, [endDate, startDate]);
   const runReport = async () => {
     setReportLoading(true);
     setErrorMessage(null);
@@ -108,7 +131,11 @@ export function AnalyticsMultiVideoReport() {
               {videos.map((video) => <label key={video.videoId} className="flex items-start gap-2 rounded-control border border-line p-3 text-sm text-dim"><input type="checkbox" checked={selected.has(video.videoId)} onChange={() => toggleVideo(video.videoId)} /><span><span className="block font-medium text-fg">{video.title}</span><span className="font-mono text-xs text-muted">{video.videoId}</span></span></label>)}
             </div>
           </fieldset>
-          <Button type="button" disabled={selectedIds.length < 2 || reportLoading} onClick={() => void runReport()}>{reportLoading ? "Loading report..." : "Build report"}</Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="secondary" disabled={reportLoading} onClick={() => shiftPeriod("previous")}>Previous period</Button>
+            <Button type="button" variant="secondary" disabled={!canMoveToNextPeriod || reportLoading} onClick={() => shiftPeriod("next")}>Next period</Button>
+            <Button type="button" disabled={selectedIds.length < 2 || reportLoading} onClick={() => void runReport()}>{reportLoading ? "Loading report..." : "Build report"}</Button>
+          </div>
         </>
       )}
       {report && !reportLoading && (
