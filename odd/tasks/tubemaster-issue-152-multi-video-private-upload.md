@@ -46,7 +46,7 @@ Issue: https://github.com/Gentleman-Programming/tubemaster/issues/152 (`status:a
 
 ## Tasks
 - T1 — S1-S3 — Explore existing private upload, staging, confirmation, quota, and channel-guard contracts; commit: 9fe4e09.
-- T2 — S3-S4 — Add public-interface RED tests and implement bounded multi-video private upload preview/confirmation/execution while preserving single-video contracts; commit: 9fe4e09, 97a4ad6.
+- T2 — S3-S4 — Add public-interface RED tests and implement bounded multi-video private upload preview/confirmation/execution while preserving single-video contracts; commit: 9fe4e09, 97a4ad6, 5a7688c.
 - T3 — S4-S5 — Run focused and full validation, document evidence, and review the final diff; commit: 2f0fa0b.
 
 ## Log
@@ -59,4 +59,4 @@ Issue: https://github.com/Gentleman-Programming/tubemaster/issues/152 (`status:a
 - L7 — Focused upload regression validation passed 15/15; TypeScript, ESLint, and `git diff --check` passed. Full suite and production build remain pending.
 - L8 — Added the staged-file adapter and `/api/youtube/upload/multi` route with session binding, supported-format/size/boundary/symlink checks, confirmed snapshots, safe API errors, and no local-path exposure in previews. Focused validation passed 22/22; full suite, lint, TypeScript, build, and `git diff --check` passed.
 - L9 — Core implementation is committed in reviewable slices: `9fe4e09` (collection contract), `97a4ad6` (staged adapter and API route), and `2f0fa0b` (evidence). User authorized publication; PR #153 was opened against `feature-2`.
-- L10 — GitHub Validate passed on PR #153; documentation was corrected to record T1/T3 evidence and the authorized publication state.
+- L10 — GitHub Validate passed on PR #153; documentation was corrected to record T1/T3 evidence, the quota-preview correction, and the authorized publication state.
