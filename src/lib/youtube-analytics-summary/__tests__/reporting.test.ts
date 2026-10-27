@@ -6,6 +6,7 @@ import {
   calculateReportMetricDeltas,
   serializeMultiVideoReportCsv,
   serializeMultiVideoReportJson,
+  shiftReportPeriod,
   validateReportVideoSelection,
 } from "../../reporting/multi-video-report";
 
@@ -68,6 +69,31 @@ test("rejects invalid report input without resolving credentials or querying ana
   assert.deepEqual(result, { kind: "analytics-multi-video-report-error", code: "INVALID_INPUT", message: "Select between 2 and 10 videos" });
   assert.equal(authCalls, 0);
   assert.equal(queryCalls, 0);
+});
+
+test("shifts a report period backward and forward by its inclusive length", () => {
+  assert.deepEqual(shiftReportPeriod("2025-06-09", "2025-06-15", "previous", "2025-06-15"), {
+    startDate: "2025-06-02",
+    endDate: "2025-06-08",
+  });
+  assert.deepEqual(shiftReportPeriod("2025-06-02", "2025-06-08", "next", "2025-06-15"), {
+    startDate: "2025-06-09",
+    endDate: "2025-06-15",
+  });
+});
+
+test("rejects a next period that would include a future date", () => {
+  assert.throws(
+    () => shiftReportPeriod("2025-06-09", "2025-06-15", "next", "2025-06-15"),
+    { message: "Future date" },
+  );
+});
+
+test("rejects invalid period navigation input", () => {
+  assert.throws(
+    () => shiftReportPeriod("2025-06-16", "2025-06-15", "previous", "2025-06-15"),
+    { message: "startDate must be <= endDate" },
+  );
 });
 
 test("queries current and previous metrics for each selected video", async () => {
