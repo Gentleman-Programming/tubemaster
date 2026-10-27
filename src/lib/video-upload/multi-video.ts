@@ -7,6 +7,7 @@ import { credentialRefSchema } from "../video-metadata/schemas";
 
 const MAX_ITEMS = 10;
 const CONFIRMATION_TTL_SECONDS = 600;
+const VIDEO_INSERT_QUOTA_UNITS = 100;
 
 const itemSchema = z.object({
   filePath: z.string().trim().min(1),
@@ -31,7 +32,10 @@ type PreparedItem = z.infer<typeof itemSchema> & {
   channelId: string;
 };
 
-export type MultiVideoUploadPreviewItem = Omit<PreparedItem, "filePath"> & { visibility: "private" };
+export type MultiVideoUploadPreviewItem = Omit<PreparedItem, "filePath"> & {
+  visibility: "private";
+  estimatedQuotaUnits: number;
+};
 export type MultiVideoUploadItemResult = {
   index: number;
   fileSha256: string;
@@ -47,6 +51,7 @@ export type MultiVideoUploadResult =
       operationId: string;
       channelId: string;
       items: MultiVideoUploadPreviewItem[];
+      estimatedQuotaUnits: number;
       confirmationToken: string;
       dryRun: true;
     }
@@ -81,6 +86,7 @@ function identity(request: MultiVideoUploadRequest, items: PreparedItem[]): stri
   return JSON.stringify([
     request.credentialRef,
     request.expectedChannelId,
+    { reviewedDryRun: true },
     items.map(({ title, description, fileSize, fileSha256 }) => ({ title, description, fileSize, fileSha256 })),
   ]);
 }
@@ -139,7 +145,9 @@ export function createMultiVideoUploadService(deps: MultiVideoUploadDependencies
       items: prepared.map((item) => ({
         fileSize: item.fileSize, fileSha256: item.fileSha256, operationId: item.operationId,
         channelId: item.channelId, title: item.title, description: item.description, visibility: "private" as const,
+        estimatedQuotaUnits: VIDEO_INSERT_QUOTA_UNITS,
       })),
+      estimatedQuotaUnits: prepared.length * VIDEO_INSERT_QUOTA_UNITS,
       confirmationToken: createConfirmationToken(deps.confirmationSecret, expiry, binding), dryRun: true,
     };
     if (request.confirmed !== true || !isValidConfirmationToken(request.confirmationToken, deps.confirmationSecret, binding, now)) throw invalid("A valid multi-video confirmation is required");

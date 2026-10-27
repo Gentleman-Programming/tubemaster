@@ -59,6 +59,8 @@ test("previews every item deterministically and returns a signed confirmation bi
   if (result.status !== "validated") return;
   assert.equal(result.channelId, "channel-1");
   assert.equal(result.items.length, 2);
+  assert.equal(result.estimatedQuotaUnits, 200);
+  assert.deepEqual(result.items.map((item) => item.estimatedQuotaUnits), [100, 100]);
   assert.deepEqual(result.items.map((item) => item.title), ["One", "Two"]);
   assert.equal("filePath" in result.items[0]!, false);
   assert.deepEqual(result.items.map((item) => item.fileSha256), [await digest("one-bytes"), await digest("two-bytes")]);
