@@ -6,8 +6,11 @@ import { createWriteContextYoutubeApiAdapter } from "../write-context/adapters/y
 import { createWriteContextService } from "../write-context/service";
 import { localUploadFiles, youtubeUploadProvider } from "./adapters/youtube-api";
 import { createVideoUploadService, type VideoUploadDependencies } from "./services";
+import { createMultiVideoUploadService } from "./multi-video";
 
 export { createVideoUploadService } from "./services";
+export { createMultiVideoUploadService } from "./multi-video";
+export type { MultiVideoUploadDependencies, MultiVideoUploadItemResult, MultiVideoUploadPreviewItem, MultiVideoUploadResult } from "./multi-video";
 export type { UploadRequest, UploadResult, UploadFileSource, UploadProvider } from "./contracts";
 
 export function createUserUploadQuotaAccountant(credentials: ResolvedCredentials) {
@@ -31,5 +34,14 @@ export function createVideoUploadCore(deps?: Partial<VideoUploadDependencies>) {
     files: deps?.files ?? localUploadFiles,
     provider: deps?.provider ?? youtubeUploadProvider,
     quotaAccountantFactory: deps?.quotaAccountantFactory ?? createUserUploadQuotaAccountant,
+  });
+}
+
+export function createMultiVideoUploadCore(deps?: Partial<VideoUploadDependencies>) {
+  const files = deps?.files ?? localUploadFiles;
+  return createMultiVideoUploadService({
+    upload: createVideoUploadCore(deps),
+    files,
+    confirmationSecret: process.env.NEXTAUTH_SECRET ?? "",
   });
 }
