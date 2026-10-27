@@ -29,8 +29,8 @@ Full walkthrough: **[docs/getting-started.md](docs/getting-started.md)**. The de
 | Interface | Entry point | Current scope |
 | --- | --- | --- |
 | Web UI | `http://localhost:3102` | Browse/select/export videos, playlist actions, rules, estimated quota usage, read-only best publish times panel, social publishing to Instagram and TikTok (preview + confirm, scheduling) |
-| CLI | `npm run cli:video-metadata -- <command>` | Auth/channel context, metadata and transcript workflows, playlists, read-only `best-times --timezone <IANA>`; quota has a separate command |
-| MCP Server (stdio) | `npm run mcp:video-metadata` | Context, metadata, transcripts, playlists, read-only `best_publish_times` (`timezone` required), Instagram/TikTok publishing (`social_*`: stage → preview → human approval → confirm; [guide](docs/social-publishing.md#using-it-from-mcp)); no login or registered quota tool |
+| CLI | `npm run cli:video-metadata -- <command>` | Auth/channel context, metadata and transcript workflows, playlists, guarded `upload multi|reconcile|reconcile-many|cancel`, read-only `best-times --timezone <IANA>`; quota has a separate command |
+| MCP Server (stdio) | `npm run mcp:video-metadata` | Context, metadata, transcripts, playlists, guarded `upload_multi|upload_reconcile|upload_reconcile_many|upload_cancel`, read-only `best_publish_times` (`timezone` required), Instagram/TikTok publishing (`social_*`: stage → preview → human approval → confirm; [guide](docs/social-publishing.md#using-it-from-mcp)); no login or registered quota tool |
 | API Route Handlers | `/api/youtube/videos`, `/api/video-metadata/*`, `/api/youtube/best-publish-times` | Session-authenticated UI operations, metadata/transcripts, estimated quota usage |
 
 Detailed usage by interface: **[docs/interfaces.md](docs/interfaces.md)**
@@ -64,6 +64,14 @@ npm run cli:video-metadata -- transcript --videoId <VIDEO_ID>
 npm run cli:video-metadata -- preview --videoId <VIDEO_ID> --editorialPrompt "Hacé un título claro"
 npm run cli:video-metadata -- apply --videoId <VIDEO_ID> --finalTitle "Nuevo título" --description "Nueva descripción" --expectedChannelId <CHANNEL_ID> --dryRun
 
+# Upload recovery: staged multi-video private preview, then explicit confirmation
+npm run cli:video-metadata -- upload multi --expectedChannelId <CHANNEL_ID> --items '[{"stagingFile":"video.mp4","title":"Video"}]' --dryRun
+npm run cli:video-metadata -- upload multi --expectedChannelId <CHANNEL_ID> --items '[{"stagingFile":"video.mp4","title":"Video"}]' --confirmed --confirmationToken <TOKEN>
+npm run cli:video-metadata -- upload reconcile --operationId <OPERATION_ID> --videoId <VIDEO_ID> --expectedChannelId <CHANNEL_ID>
+npm run cli:video-metadata -- upload reconcile-many --expectedChannelId <CHANNEL_ID> --items '[{"operationId":"<OPERATION_ID>","videoId":"<VIDEO_ID>"}]'
+npm run cli:video-metadata -- upload cancel --operationId <OPERATION_ID> --videoId <VIDEO_ID> --expectedChannelId <CHANNEL_ID> --dryRun
+npm run cli:video-metadata -- upload cancel --operationId <OPERATION_ID> --videoId <VIDEO_ID> --expectedChannelId <CHANNEL_ID> --confirmed --confirmationToken <TOKEN>
+
 # Read-only best publish times estimate (needs yt-analytics.readonly)
 npm run cli:video-metadata -- best-times --timezone America/Argentina/Buenos_Aires
 ```
@@ -90,7 +98,8 @@ See full env setup + Google credentials mapping: **[docs/getting-started.md#2-lo
 
 - **Stable JSON envelopes** across CLI/MCP/core with typed errors and non-zero exit status on failures.
 - **Strict credential precedence**: explicit `credentialRef` → active local context (`data/auth-context.json`) → typed auth error.
-- **Fail-closed write operations** (`apply`, `playlist_create`, `playlist_update`, `playlist_delete`) requiring `expectedChannelId`.
+- **Fail-closed write operations** (`apply`, playlist mutations, multi-video upload execution, and return-to-private recovery) requiring `expectedChannelId` and explicit confirmation where applicable.
+- **Recovery safety:** reconciliation never retries a mutation; unknown and unsupported provider outcomes remain explicit, and return-to-private requires a dry-run preview plus matching confirmation token.
 - **Safe playlist partial results**: add returns `attempted`/`added` + `failures[]`; remove returns `requested`/`removed` + `failures[]`.
 - **Transcript compatibility contract** with stable `status` and additive diagnostics.
 

@@ -1308,6 +1308,10 @@ const TOOLS_BEFORE_SOCIAL = [
   "playlist_update",
   "preview",
   "transcript",
+  "upload_cancel",
+  "upload_multi",
+  "upload_reconcile",
+  "upload_reconcile_many",
   "whoami",
   "write_channel_list",
   "write_channel_select",
@@ -1324,7 +1328,7 @@ const SOCIAL_TOOLS = [
   "social_stage_video",
 ];
 
-test("MCP server registers exactly the previous tools plus the seven social tools", () => {
+test("MCP server registers the previous tools plus upload recovery and social tools", () => {
   const server = createMcpServer({
     ...makeCoreStub(),
     fetchBestPublishTimes: async () => bestPublishTimesResult,

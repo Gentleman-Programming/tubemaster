@@ -39,9 +39,9 @@ Issue: https://github.com/Gentleman-Programming/tubemaster/issues/156 (`status:a
 > Builds on the approved and merged upload-recovery slice in issue #154 / PR #155 and the reviewed multi-video private-upload slice in issue #152 / PR #153. Preserve existing OAuth scopes and public JSON contracts. Risk is concentrated in adapter parity: a mismatch could bypass confirmation or channel guards, so adapters must delegate to the existing guarded core rather than duplicate provider calls.
 
 ## Tasks
-- T1 — S1-S3 — Explore existing CLI, MCP, upload, recovery, authentication, error and documentation contracts; commit: pending (exploration complete).
-- T2 — S3-S4 — Add RED public-interface tests and implement CLI/MCP adapters without bypassing guarded cores; commits: pending (implementation and focused validation complete).
-- T3 — S4-S5 — Run focused and full validation, review the diff, and record evidence; commits: pending (validation complete).
+- T1 — S1-S3 — Explore existing CLI, MCP, upload, recovery, authentication, error and documentation contracts; commit: b285d99 (exploration complete).
+- T2 — S3-S4 — Add RED public-interface tests and implement CLI/MCP adapters without bypassing guarded cores; commits: b285d99, 147c3ef (implementation and focused validation complete).
+- T3 — S4-S5 — Run focused and full validation, review the diff, and record evidence; commits: b285d99, 147c3ef (validation complete).
 
 ## Log
 - L1 — User instruction: "autorizo"

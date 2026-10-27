@@ -11,6 +11,7 @@ TubeMaster is a channel-operations workspace across Web UI, CLI, MCP, and API su
 | Playlists | Web UI actions; CLI and MCP list/create/update/delete/add/remove; selected UI API routes |
 | Rules | Web UI create/list/delete/run; `/api/rules` and `/api/run` |
 | Metadata preview/apply, transcript acquisition | CLI, MCP, and metadata API; apply requires expected channel and supports dry run |
+| Reviewed multi-video upload and recovery | CLI `upload multi|reconcile|reconcile-many|cancel`, MCP `upload_multi|upload_reconcile|upload_reconcile_many|upload_cancel`, and authenticated recovery/upload APIs; preview and explicit confirmation remain required |
 | Analytics summary | Authenticated `GET /api/youtube/analytics` with a range of up to 90 days; the dashboard offers 7/30/90-day presets, custom dates, daily totals, traffic-source breakdowns, period comparison, and local CSV export |
 | Quota visibility | Web UI, separate quota CLI, and quota API; MCP quota handler is not registered |
 | Operation audit events | Best-effort metadata, transcript, and playlist service logs; not a queryable audit store |
@@ -83,6 +84,19 @@ npm run cli:video-metadata -- apply --videoId <VIDEO_ID> --finalTitle "..." --de
 npm run cli:video-metadata -- best-times --timezone <IANA> [--userId <USER_ID>]  # read-only estimate; needs yt-analytics.readonly
 ```
 
+### Upload and recovery commands
+
+`upload multi` accepts a JSON `--items` array of staged files (`stagingFile`, `title`, optional `description`). Use `--dryRun` first; the returned confirmation token is required with `--confirmed` for execution. `upload reconcile` and `upload reconcile-many` are read-only and never retry a mutation. `upload cancel` requires a dry-run preview and matching `--confirmed --confirmationToken`; it returns to private only when the provider supports the operation.
+
+```bash
+npm run cli:video-metadata -- upload multi --expectedChannelId <UC...> --items '[{"stagingFile":"video.mp4","title":"..."}]' --dryRun
+npm run cli:video-metadata -- upload multi --expectedChannelId <UC...> --items '[{"stagingFile":"video.mp4","title":"..."}]' --confirmed --confirmationToken <TOKEN>
+npm run cli:video-metadata -- upload reconcile --operationId <OPERATION_ID> [--videoId <VIDEO_ID>] --expectedChannelId <UC...>
+npm run cli:video-metadata -- upload reconcile-many --expectedChannelId <UC...> --items '[{"operationId":"...","videoId":"..."}]'
+npm run cli:video-metadata -- upload cancel --operationId <OPERATION_ID> --videoId <VIDEO_ID> --expectedChannelId <UC...> --dryRun
+npm run cli:video-metadata -- upload cancel --operationId <OPERATION_ID> --videoId <VIDEO_ID> --expectedChannelId <UC...> --confirmed --confirmationToken <TOKEN>
+```
+
 ### Playlist commands
 
 ```bash
@@ -116,6 +130,11 @@ Key MCP tools:
   - `auth_user_select`
 - Metadata tools:
   - `list`, `transcript`, `preview`, `apply`
+- Upload and recovery tools:
+  - `upload_multi` — preview or explicitly confirm a bounded staged multi-video private upload; `dryRun` returns a confirmation token and confirmed execution does not publish automatically
+  - `upload_reconcile` — read-only reconciliation for one operation; never retries
+  - `upload_reconcile_many` — ordered read-only reconciliation for multiple operations
+  - `upload_cancel` — dry-run preview and explicitly confirmed return-to-private recovery where supported
 - Best publish times tool:
   - `best_publish_times` — read-only estimate from the channel's own past uploads; `timezone` (IANA) required; needs `yt-analytics.readonly`; never publishes or schedules
 - Social publishing tools (Instagram/TikTok; accounts are connected once in the web app, see [Using it from MCP](./social-publishing.md#using-it-from-mcp)):
