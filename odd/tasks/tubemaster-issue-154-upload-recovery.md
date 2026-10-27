@@ -39,9 +39,9 @@ Issue: https://github.com/Gentleman-Programming/tubemaster/issues/154 (`status:a
 > Builds on the guarded single-video upload and reviewed multi-video private upload delivered in PR #153. Provider APIs may not expose a reliable operation identity or cancellation primitive for every mutation; those cases must remain explicitly unknown or unsupported. Preserve existing OAuth scopes and fail closed on channel, capability, confirmation, or reconciliation ambiguity.
 
 ## Tasks
-- T1 — S1-S3 — Explore existing upload, scheduling, operation identity, provider, channel guard, quota, and confirmation contracts; commit: pending (exploration complete).
-- T2 — S3-S4 — Add RED public-interface tests and implement reconciliation plus explicitly confirmed cancellation/return-to-private behavior without blind retries; commit: pending (implementation complete, validation pending).
-- T3 — S4-S5 — Run focused and full validation, review the diff, and record evidence; commit: pending.
+- T1 — S1-S3 — Explore existing upload, scheduling, operation identity, provider, channel guard, quota, and confirmation contracts; commit: 5e10785 (exploration complete).
+- T2 — S3-S4 — Add RED public-interface tests and implement reconciliation plus explicitly confirmed cancellation/return-to-private behavior without blind retries; commits: 5e10785, b4c9f28.
+- T3 — S4-S5 — Run focused and full validation, review the diff, and record evidence; commits: 5e10785, b4c9f28 (complete).
 
 ## Log
 - L1 — User request: "continua"
@@ -50,3 +50,4 @@ Issue: https://github.com/Gentleman-Programming/tubemaster/issues/154 (`status:a
 - L4 — Issue #154 created, read back, and approved with `status:approved` before source changes.
 - L5 — Existing YouTube upload operation IDs are local and the provider has no durable mutation cursor. Recovery therefore preserves the local operation ID and requires an optional provider video ID; without it, reconciliation returns explicit `unsupported` rather than guessing by metadata or retrying.
 - L6 — Implemented generic recovery service, ordered batch reconciliation, authenticated routes, YouTube inspection/return-to-private adapter, explicit confirmation tokens, channel checks, quota accounting, and unknown-outcome preservation. No automatic retry or remote deletion was added.
+- L7 — Focused recovery tests, full serial test suite, ESLint, TypeScript, production build, and `git diff --check` passed before delivery preparation.
