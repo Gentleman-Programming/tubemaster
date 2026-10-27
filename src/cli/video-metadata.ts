@@ -7,6 +7,9 @@ import { createVideoMetadataCore } from "@/lib/video-metadata";
 import { DomainError } from "@/lib/video-metadata/contracts";
 import type { VideoMetadataCore } from "@/lib/video-metadata";
 import { createPlaylistManagementCore, type PlaylistManagementCore } from "@/lib/playlist-management";
+import { createMultiVideoUploadCore } from "@/lib/video-upload";
+import { createMultiUploadAdapter } from "@/lib/video-upload/multi-adapter";
+import { createVideoRecoveryCore } from "@/lib/video-recovery";
 import { createCliAuthService } from "@/lib/cli-auth/service";
 import type { CredentialRef } from "@/lib/video-metadata/contracts";
 import {
@@ -30,7 +33,7 @@ type CliAuthAdapter = {
 };
 
 export type ParsedArgs = {
-  namespace: "metadata" | "auth" | "playlist";
+  namespace: "metadata" | "auth" | "playlist" | "upload";
   command:
     | "list"
     | "transcript"
@@ -42,6 +45,10 @@ export type ParsedArgs = {
     | "delete"
     | "add"
     | "remove"
+    | "multi"
+    | "reconcile"
+    | "reconcile-many"
+    | "cancel"
     | "login"
     | "whoami"
     | "list-channels"
@@ -57,21 +64,25 @@ export function parseArgs(argv: string[]): ParsedArgs {
   const [namespaceRaw, maybeCommandRaw, ...remaining] = argv;
   const isAuthNamespace = namespaceRaw === "auth";
   const isPlaylistNamespace = namespaceRaw === "playlist";
+  const isUploadNamespace = namespaceRaw === "upload";
   const commandRaw =
-    isAuthNamespace || isPlaylistNamespace ? maybeCommandRaw : namespaceRaw;
+    isAuthNamespace || isPlaylistNamespace || isUploadNamespace ? maybeCommandRaw : namespaceRaw;
   const flagTokens =
-    isAuthNamespace || isPlaylistNamespace
+    isAuthNamespace || isPlaylistNamespace || isUploadNamespace
       ? remaining
       : [maybeCommandRaw, ...remaining].filter(Boolean);
 
   const validMetadataCommands = ["list", "transcript", "preview", "apply", "best-times"];
   const validAuthCommands = ["login", "whoami", "list-channels", "select-channel", "list-users", "select-user", "logout", "revoke"];
   const validPlaylistCommands = ["list", "create", "update", "delete", "add", "remove"];
+  const validUploadCommands = ["multi", "reconcile", "reconcile-many", "cancel"];
   const validCommands = isAuthNamespace
     ? validAuthCommands
     : isPlaylistNamespace
       ? validPlaylistCommands
-      : validMetadataCommands;
+      : isUploadNamespace
+        ? validUploadCommands
+        : validMetadataCommands;
 
   if (!commandRaw || !validCommands.includes(commandRaw)) {
     throw new DomainError({
@@ -80,7 +91,9 @@ export function parseArgs(argv: string[]): ParsedArgs {
         ? "Auth command must be one of: login, whoami, list-channels, select-channel, list-users, select-user, logout, revoke"
         : isPlaylistNamespace
           ? "Playlist command must be one of: list, create, update, delete, add, remove"
-          : "Command must be one of: list, transcript, preview, apply, best-times",
+          : isUploadNamespace
+            ? "Upload command must be one of: multi, reconcile, reconcile-many, cancel"
+            : "Command must be one of: list, transcript, preview, apply, best-times",
     });
   }
 
@@ -108,7 +121,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
   }
 
   return {
-    namespace: isAuthNamespace ? "auth" : isPlaylistNamespace ? "playlist" : "metadata",
+    namespace: isAuthNamespace ? "auth" : isPlaylistNamespace ? "playlist" : isUploadNamespace ? "upload" : "metadata",
     command: commandRaw as ParsedArgs["command"],
     flags,
   };
@@ -122,6 +135,30 @@ function requirePlaylistMutationConfirmation(flags: Record<string, string | bool
       ? "--confirmed must be provided without a value"
       : "Missing required --confirmed",
   });
+}
+
+function requireUploadConfirmation(flags: Record<string, string | boolean>): void {
+  if (flags.confirmed === true) return;
+  throw new DomainError({
+    code: "validation_failed",
+    message: "confirmed" in flags
+      ? "--confirmed must be provided without a value"
+      : "Missing required --confirmed",
+  });
+}
+
+function parseJsonFlag(flags: Record<string, string | boolean>, key: string): unknown {
+  const raw = requiredStringFlag(flags, key);
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new DomainError({ code: "validation_failed", message: `Invalid JSON for --${key}` });
+  }
+}
+
+function userIdFromCredentialRef(credentialRef: CredentialRef): string {
+  if ("userId" in credentialRef && credentialRef.userId.trim()) return credentialRef.userId;
+  throw new DomainError({ code: "validation_failed", message: "Upload commands require a user-scoped credentialRef" });
 }
 
 function parseVideoIdsFlag(flags: Record<string, string | boolean>) {
@@ -195,6 +232,13 @@ function serializeBestPublishTimesError(error: BestPublishTimesError) {
   });
 }
 
+type CliUploadCore = {
+  multiUpload(userId: string, input: unknown): Promise<unknown>;
+  reconcile(input: unknown): Promise<unknown>;
+  reconcileMany(input: unknown): Promise<unknown>;
+  cancel(input: unknown): Promise<unknown>;
+};
+
 function serializeError(error: unknown) {
   if (error instanceof DomainError) {
     return JSON.stringify({
@@ -228,7 +272,8 @@ export async function runCliCommand(args: {
     | "addVideosToPlaylist"
     | "removeVideosFromPlaylist"
   > &
-    Partial<Pick<ReturnType<typeof createBestPublishTimes>, "fetchBestPublishTimes">>;
+    Partial<Pick<ReturnType<typeof createBestPublishTimes>, "fetchBestPublishTimes">> &
+    Partial<CliUploadCore>;
   auth?: CliAuthAdapter;
   writeStdout?: (line: string) => void;
   writeStderr?: (line: string) => void;
@@ -238,6 +283,14 @@ export async function runCliCommand(args: {
     ...createPlaylistManagementCore(),
     ...createBestPublishTimes(),
   };
+  const multiUpload = core.multiUpload ?? createMultiUploadAdapter({
+    upload: async (_userId, input) => createMultiVideoUploadCore()(input),
+    stagingRoot: process.env.VIDEO_UPLOAD_STAGING_ROOT ?? `${process.cwd()}/staging`,
+    maxBytes: Number(process.env.VIDEO_UPLOAD_MAX_BYTES ?? 2 * 1024 * 1024 * 1024),
+  });
+  const reconcile = core.reconcile ?? ((input: unknown) => createVideoRecoveryCore().reconcile(input));
+  const reconcileMany = core.reconcileMany ?? ((input: unknown) => createVideoRecoveryCore().reconcileMany(input));
+  const cancel = core.cancel ?? ((input: unknown) => createVideoRecoveryCore().cancel(input));
   const auth = args.auth ?? createCliAuthService();
   const writeStdout =
     args.writeStdout ?? ((line: string) => process.stdout.write(`${line}\n`));
@@ -314,6 +367,61 @@ export async function runCliCommand(args: {
     const credentialRef = (publicTranscript ? explicitCredentialRef : await auth.resolveEffectiveCredentialRef({
       explicit: explicitCredentialRef ?? undefined,
     })) as CredentialRef;
+
+    if (parsedArgs.namespace === "upload") {
+      const expectedChannelId = requiredStringFlag(parsedArgs.flags, "expectedChannelId");
+      const userId = userIdFromCredentialRef(credentialRef);
+
+      if (parsedArgs.command === "multi") {
+        const dryRun = parsedArgs.flags.dryRun === true;
+        if (!dryRun) requireUploadConfirmation(parsedArgs.flags);
+        const input = {
+          expectedChannelId,
+          items: parseJsonFlag(parsedArgs.flags, "items"),
+          ...(dryRun ? { dryRun: true } : {}),
+          ...(parsedArgs.flags.confirmed === true ? { confirmed: true } : {}),
+          ...(typeof parsedArgs.flags.confirmationToken === "string" ? { confirmationToken: parsedArgs.flags.confirmationToken } : {}),
+        };
+        const result = await multiUpload(userId, input);
+        writeStdout(serializeSuccess(result));
+        return 0;
+      }
+
+      if (parsedArgs.command === "reconcile") {
+        const result = await reconcile({
+          credentialRef,
+          expectedChannelId,
+          operationId: requiredStringFlag(parsedArgs.flags, "operationId"),
+          ...(typeof parsedArgs.flags.videoId === "string" ? { videoId: parsedArgs.flags.videoId } : {}),
+        });
+        writeStdout(serializeSuccess(result));
+        return 0;
+      }
+
+      if (parsedArgs.command === "reconcile-many") {
+        const result = await reconcileMany({
+          credentialRef,
+          expectedChannelId,
+          items: parseJsonFlag(parsedArgs.flags, "items"),
+        });
+        writeStdout(serializeSuccess(result));
+        return 0;
+      }
+
+      const dryRun = parsedArgs.flags.dryRun === true;
+      if (!dryRun) requireUploadConfirmation(parsedArgs.flags);
+      const result = await cancel({
+        credentialRef,
+        expectedChannelId,
+        operationId: requiredStringFlag(parsedArgs.flags, "operationId"),
+        videoId: requiredStringFlag(parsedArgs.flags, "videoId"),
+        dryRun,
+        ...(parsedArgs.flags.confirmed === true ? { confirmed: true } : {}),
+        ...(typeof parsedArgs.flags.confirmationToken === "string" ? { confirmationToken: parsedArgs.flags.confirmationToken } : {}),
+      });
+      writeStdout(serializeSuccess(result));
+      return 0;
+    }
 
     if (parsedArgs.namespace === "playlist") {
       if (parsedArgs.command === "list") {
