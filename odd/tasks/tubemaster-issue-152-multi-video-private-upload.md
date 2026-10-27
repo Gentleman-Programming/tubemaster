@@ -46,7 +46,7 @@ Issue: https://github.com/Gentleman-Programming/tubemaster/issues/152 (`status:a
 
 ## Tasks
 - T1 — S1-S3 — Explore existing private upload, staging, confirmation, quota, and channel-guard contracts; commit: pending.
-- T2 — S3-S4 — Add public-interface RED tests and implement bounded multi-video private upload preview/confirmation/execution while preserving single-video contracts; commit: pending.
+- T2 — S3-S4 — Add public-interface RED tests and implement bounded multi-video private upload preview/confirmation/execution while preserving single-video contracts; commit: 9fe4e09, 97a4ad6.
 - T3 — S4-S5 — Run focused and full validation, document evidence, and review the final diff; commit: pending.
 
 ## Log
@@ -58,3 +58,4 @@ Issue: https://github.com/Gentleman-Programming/tubemaster/issues/152 (`status:a
 - L6 — Added a focused collection service with deterministic per-item preview, SHA-256 file identity binding, HMAC confirmation tokens, all-item preflight, bounded execution, ordered outcomes, and uncertain-result preservation. Existing single-video upload contracts remain unchanged.
 - L7 — Focused upload regression validation passed 15/15; TypeScript, ESLint, and `git diff --check` passed. Full suite and production build remain pending.
 - L8 — Added the staged-file adapter and `/api/youtube/upload/multi` route with session binding, supported-format/size/boundary/symlink checks, confirmed snapshots, safe API errors, and no local-path exposure in previews. Focused validation passed 22/22; full suite, lint, TypeScript, build, and `git diff --check` passed.
+- L9 — Core implementation is committed locally in reviewable slices: `9fe4e09` (collection contract) and `97a4ad6` (staged adapter and API route). Publication remains unauthorized.
