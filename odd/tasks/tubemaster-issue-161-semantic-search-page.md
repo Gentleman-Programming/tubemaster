@@ -36,9 +36,9 @@ Implementation specification for the approved GitHub issue in `Gentleman-Program
 
 ## Tasks
 - T1 (S1-S5): Reconcile approved issue and write implementation record; commit: `pending`.
-- T2 (S2-S5): Implement the dedicated UI-only page, navigation, provider-pending states, and tests; commit: pending.
-- T3 (S5): Run page checks and local smoke; commit: none.
-- T4 (S5): Review diff and record outcome; commit: pending.
+- T2 (S2-S5): Implement the dedicated UI-only page, navigation, provider-pending states, and tests; commit: `baed898`.
+- T3 (S5): Run page checks and local smoke; commit: none; focused tests 4/4, TypeScript, lint, build, and diff check pass; unauthenticated route smoke redirects `307` to `/` as expected.
+- T4 (S5): Review diff and record outcome; commit: `baed898`.
 
 ## Log
 - L1: no, una pagina separada
@@ -46,3 +46,6 @@ Implementation specification for the approved GitHub issue in `Gentleman-Program
 - L3: User chose the same-page `Index video` flow so the feature can be tested without a separate pre-indexing pipeline.
 - L4: The user later narrowed issue #161 to page UX only; provider, persistence, and API work must be deferred until a model is selected.
 - L5: The page uses local validation and provider-pending status messaging without claiming that indexing or search has executed.
+- L6: Removed OpenAI provider, embedding storage, semantic-search API routes, related tests, and API configuration docs after the user requested a page-only slice; retained the dedicated route and navigation.
+- L7: Focused UI/navigation tests pass 4/4. Clean TypeScript, lint, and diff checks pass after removing stale `.next` output; the production build passes and exposes `/dashboard/semantic-search`.
+- L8: Unauthenticated local smoke returns `307` to `/`, confirming the dashboard route remains protected. Final UI-only commit is `baed898`; no push or PR was performed.
