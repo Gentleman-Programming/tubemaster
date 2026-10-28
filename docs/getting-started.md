@@ -90,16 +90,12 @@ NEXTAUTH_SECRET=replace-with-a-long-random-secret
 # YOUTUBE_TRANSCRIPT_PROVIDER=youtube-captions
 # METADATA_GENERATOR_MODE=rule-based
 # METADATA_GENERATOR_RAW_OUTPUT={"finalTitle":"...","description":"...","promptVersion":"..."}
-# OPENAI_EMBEDDING_MODEL=text-embedding-3-small
-# OPENAI_API_KEY=sk-... (required for semantic search)
 ```
 
 Required variables are used by:
 
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` → OAuth client for Web + CLI + MCP (`src/lib/auth.ts`)
 - `NEXTAUTH_URL`, `NEXTAUTH_SECRET` → NextAuth session/auth flow (web routes)
-- `OPENAI_API_KEY` → server-side transcript embeddings for `/dashboard/semantic-search`; never exposed to the browser
-- `OPENAI_EMBEDDING_MODEL` → optional OpenAI embedding model override (defaults to `text-embedding-3-small`)
 
 ---
 

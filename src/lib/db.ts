@@ -47,20 +47,6 @@ export const transcriptIndexEntries = sqliteTable("transcript_index_entries", {
   order: integer("entry_order").notNull(),
 });
 
-export const transcriptEmbeddingEntries = sqliteTable("transcript_embedding_entries", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  userId: text("user_id").notNull(),
-  videoId: text("video_id").notNull(),
-  chunkIndex: integer("chunk_index").notNull(),
-  text: text("text").notNull(),
-  identity: text("identity").notNull(),
-  vector: text("vector").notNull(),
-  dimension: integer("dimension").notNull(),
-  order: integer("entry_order").notNull(),
-  provider: text("provider").notNull(),
-  model: text("model").notNull(),
-});
-
 async function initializeDatabase() {
   await rawClient.executeMultiple(`
     CREATE TABLE IF NOT EXISTS users (
@@ -103,19 +89,6 @@ async function initializeDatabase() {
       text TEXT NOT NULL,
       identity TEXT NOT NULL,
       entry_order INTEGER NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS transcript_embedding_entries (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id TEXT NOT NULL,
-      video_id TEXT NOT NULL,
-      chunk_index INTEGER NOT NULL,
-      text TEXT NOT NULL,
-      identity TEXT NOT NULL,
-      vector TEXT NOT NULL,
-      dimension INTEGER NOT NULL,
-      entry_order INTEGER NOT NULL,
-      provider TEXT NOT NULL,
-      model TEXT NOT NULL
     );
   `);
 
@@ -167,7 +140,7 @@ const client = new Proxy(rawClient, {
 
 export const quotaClient = client;
 
-export const db = drizzle(client, { schema: { users, rules, transcriptIndexEntries, transcriptEmbeddingEntries } });
+export const db = drizzle(client, { schema: { users, rules, transcriptIndexEntries } });
 
 export type StoredOAuthToken = {
   userId: string;
