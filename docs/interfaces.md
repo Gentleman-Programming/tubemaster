@@ -11,6 +11,7 @@ TubeMaster is a channel-operations workspace across Web UI, CLI, MCP, and API su
 | Playlists | Web UI actions; CLI and MCP list/create/update/delete/add/remove; selected UI API routes |
 | Rules | Web UI create/list/delete/run; `/api/rules` and `/api/run` |
 | Metadata preview/apply, transcript acquisition | CLI, MCP, and metadata API; apply requires expected channel and supports dry run |
+| Transcript semantic search | Authenticated `/dashboard/semantic-search` page; OpenAI embeddings remain server-side and require `OPENAI_API_KEY` |
 | Reviewed multi-video upload and recovery | CLI `upload multi|reconcile|reconcile-many|cancel`, MCP `upload_multi|upload_reconcile|upload_reconcile_many|upload_cancel`, and authenticated recovery/upload APIs; preview and explicit confirmation remain required |
 | Analytics summary | Authenticated `GET /api/youtube/analytics` with a range of up to 90 days; the dashboard offers 7/30/90-day presets, custom dates, daily totals, traffic-source breakdowns, period comparison, and local CSV export |
 | Quota visibility | Web UI, separate quota CLI, and quota API; MCP quota handler is not registered |
@@ -163,6 +164,10 @@ All routes are App Router handlers and require authenticated session user.
 
 - `POST /api/video-metadata/transcript`
   - body: `{ "videoId": "..." }`
+- `POST /api/video-metadata/semantic-search/index`
+  - body: `{ "videoId": "..." }`; authenticates the user, reads the transcript, and persists OpenAI embeddings
+- `POST /api/video-metadata/semantic-search`
+  - body: `{ "query": "...", "limit": 5 }`; returns ranked transcript matches scoped to the authenticated user
 - `POST /api/video-metadata/preview`
   - body: `{ "videoId": "...", "editorialPrompt": "..." }`
 - `POST /api/video-metadata/apply`
