@@ -1,0 +1,3 @@
+T1 S1-S5 reconcile transcript dependencies with feature-2 — route: integration — commit: 95fc37d
+T2 S2-S5 implement provider-neutral semantic-search boundary and focused tests — route: implementation — commit: pending
+T3 S5 run focused and repository checks — route: verification — commit: none
