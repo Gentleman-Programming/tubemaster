@@ -11,6 +11,13 @@ const requestSchema = z.object({
   expectedChannelId: z.string().trim().min(1),
   title: z.string().trim().min(1).max(100),
   description: z.string().max(5000).optional(),
+  tags: z.array(z.string().trim().min(1).max(100)).max(30).optional().refine((tags) => !tags || tags.join(",").length <= 500, "Tags are too long"),
+  categoryId: z.string().regex(/^\d+$/).optional(),
+  defaultLanguage: z.string().trim().min(1).max(35).optional(),
+  defaultAudioLanguage: z.string().trim().min(1).max(35).optional(),
+  license: z.enum(["youtube", "creativeCommon"]).optional(),
+  selfDeclaredMadeForKids: z.boolean().optional(),
+  containsSyntheticMedia: z.boolean().optional(),
   dryRun: z.boolean().optional(),
   confirmed: z.boolean().optional(),
 }).strict();
@@ -75,6 +82,9 @@ export function createUploadAdapter(deps: {
       return await deps.upload({
         credentialRef: { userId }, expectedChannelId: request.expectedChannelId,
         filePath: uploadPath, title: request.title, description: request.description,
+        tags: request.tags, categoryId: request.categoryId, defaultLanguage: request.defaultLanguage,
+        defaultAudioLanguage: request.defaultAudioLanguage, license: request.license,
+        selfDeclaredMadeForKids: request.selfDeclaredMadeForKids, containsSyntheticMedia: request.containsSyntheticMedia,
         visibility: "private", dryRun: request.dryRun, confirmed: request.confirmed,
       });
     } finally {

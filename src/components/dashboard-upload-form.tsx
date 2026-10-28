@@ -2,21 +2,29 @@
 
 import { useEffect, useRef, useState } from "react";
 
-export type UploadFields = { stagingFile: string; title: string; description: string; expectedChannelId: string };
+export type UploadFields = { stagingFile: string; title: string; description: string; tags: string; categoryId: string; defaultLanguage: string; defaultAudioLanguage: string; license: "youtube" | "creativeCommon"; selfDeclaredMadeForKids: boolean; containsSyntheticMedia: boolean; expectedChannelId: string };
 type UploadReply = { status?: string; error?: string; outcome?: string; operationId?: string; videoId?: string; channelId?: string };
-export const emptyUploadFields: UploadFields = { stagingFile: "", title: "", description: "", expectedChannelId: "" };
+export const uploadLanguageOptions = [
+  ["es", "Spanish"], ["en", "English"], ["pt", "Portuguese"], ["fr", "French"],
+  ["it", "Italian"], ["de", "German"], ["ja", "Japanese"], ["ko", "Korean"], ["zh", "Chinese"],
+  ["ar", "Arabic"], ["hi", "Hindi"], ["nl", "Dutch"], ["pl", "Polish"], ["ru", "Russian"],
+  ["tr", "Turkish"],
+] as const;
+export const emptyUploadFields: UploadFields = { stagingFile: "", title: "", description: "", tags: "", categoryId: "", defaultLanguage: "", defaultAudioLanguage: "", license: "youtube", selfDeclaredMadeForKids: false, containsSyntheticMedia: false, expectedChannelId: "" };
 
 export function validateUpload(fields: UploadFields): Partial<Record<keyof UploadFields, string>> {
   const errors: Partial<Record<keyof UploadFields, string>> = {};
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$/.test(fields.stagingFile) || !/\.(mp4|mov|webm|mkv)$/i.test(fields.stagingFile)) errors.stagingFile = "Choose and stage a supported video (mp4, mov, webm or mkv).";
   if (!fields.title.trim() || fields.title.trim().length > 100) errors.title = "Enter a title of 1–100 characters.";
   if (fields.description.length > 5000) errors.description = "Description must be at most 5000 characters.";
+  if (fields.tags.split(",").some((tag) => tag.trim().length > 100) || fields.tags.split(",").filter((tag) => tag.trim()).length > 30 || fields.tags.replace(/\s/g, "").length > 500) errors.tags = "Use at most 30 tags and 500 characters total.";
+  if (fields.categoryId && !/^\d+$/.test(fields.categoryId)) errors.categoryId = "Category ID must be numeric.";
   if (!fields.expectedChannelId.trim()) errors.expectedChannelId = "An active channel is required.";
   return errors;
 }
 
 export function uploadPayload(fields: UploadFields, dryRun: boolean) {
-  return { stagingFile: fields.stagingFile, title: fields.title.trim(), description: fields.description, expectedChannelId: fields.expectedChannelId, dryRun, confirmed: !dryRun };
+  return { stagingFile: fields.stagingFile, title: fields.title.trim(), description: fields.description, tags: fields.tags.split(",").map((tag) => tag.trim()).filter(Boolean), categoryId: fields.categoryId || undefined, defaultLanguage: fields.defaultLanguage || undefined, defaultAudioLanguage: fields.defaultAudioLanguage || undefined, license: fields.license, selfDeclaredMadeForKids: fields.selfDeclaredMadeForKids, containsSyntheticMedia: fields.containsSyntheticMedia, expectedChannelId: fields.expectedChannelId, dryRun, confirmed: !dryRun };
 }
 
 export function uploadMessage(reply: UploadReply, dryRun: boolean): string {
@@ -107,7 +115,7 @@ export function DashboardUploadForm() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [stagedFile, setStagedFile] = useState<File | null>(null);
   const inFlight = useRef(false);
-  const fieldRefs = useRef<Partial<Record<keyof UploadFields, HTMLInputElement | HTMLTextAreaElement | null>>>({});
+  const fieldRefs = useRef<Partial<Record<keyof UploadFields, HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null>>>({});
 
   useEffect(() => {
     let live = true;
@@ -167,7 +175,7 @@ export function DashboardUploadForm() {
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
       setMessage("Correct the highlighted fields before continuing.");
-      const firstInvalid = (["stagingFile", "title", "description", "expectedChannelId"] as const).find((key) => nextErrors[key]);
+      const firstInvalid = (["stagingFile", "title", "description", "tags", "categoryId", "defaultLanguage", "defaultAudioLanguage", "expectedChannelId"] as const).find((key) => nextErrors[key]);
       if (firstInvalid) fieldRefs.current[firstInvalid]?.focus();
       return;
     }
@@ -270,14 +278,22 @@ export function DashboardUploadForm() {
       <div><h1 className="text-2xl font-bold">Upload a private Short</h1><p className="mt-2 text-sm text-zinc-400">Only private uploads are supported. This does not schedule or publish videos publicly. Choose a video from your device. It is staged securely before preview; no video is uploaded to YouTube until you confirm.</p></div>
       <p className="text-sm">Active channel: <strong role="status" aria-live="polite">{channel ? `${channel.title} (${channel.id})` : channelStatus}</strong></p>
       <form onSubmit={(event) => { event.preventDefault(); void submit(true); }} className="space-y-4" noValidate>
-        {(["stagingFile", "title", "description", "expectedChannelId"] as const).map((key) => (
+        {(["stagingFile", "title", "description", "tags", "categoryId", "defaultLanguage", "defaultAudioLanguage", "expectedChannelId"] as const).map((key) => (
           <div key={key} className="space-y-1">
-            <label htmlFor={`upload-${key}`} className="block text-sm font-medium">{{ stagingFile: "Video file", title: "Title", description: "Description", expectedChannelId: "Expected channel ID" }[key]}</label>
-            {key === "stagingFile" ? <input id={`upload-${key}`} type="file" accept=".mp4,.mov,.webm,.mkv" ref={(node) => { fieldRefs.current[key] = node; }} onChange={(event) => selectFile(event.target.files?.[0] ?? null)} disabled={busy || finished} aria-invalid={!!errors[key]} aria-describedby={errors[key] ? `error-${key}` : undefined} className={inputClass} /> : key === "description" ? <textarea id={`upload-${key}`} ref={(node) => { fieldRefs.current[key] = node; }} value={fields[key]} onChange={(event) => update(key, event.target.value)} maxLength={5001} aria-invalid={!!errors[key]} aria-describedby={errors[key] ? `error-${key}` : undefined} className={inputClass} rows={4} /> : <input id={`upload-${key}`} ref={(node) => { fieldRefs.current[key] = node; }} value={fields[key]} onChange={(event) => update(key, event.target.value)} readOnly={key === "expectedChannelId"} aria-invalid={!!errors[key]} aria-describedby={errors[key] ? `error-${key}` : undefined} className={inputClass} />}
+            <label htmlFor={`upload-${key}`} className="block text-sm font-medium">{{ stagingFile: "Video file", title: "Title", description: "Description", tags: "Tags (comma separated)", categoryId: "Category ID", defaultLanguage: "Default language", defaultAudioLanguage: "Default audio language", expectedChannelId: "Expected channel ID" }[key]}</label>
+            {key === "stagingFile" ? <input id={`upload-${key}`} type="file" accept=".mp4,.mov,.webm,.mkv" ref={(node) => { fieldRefs.current[key] = node; }} onChange={(event) => selectFile(event.target.files?.[0] ?? null)} disabled={busy || finished} aria-invalid={!!errors[key]} aria-describedby={errors[key] ? `error-${key}` : undefined} className={inputClass} /> : key === "description" ? <textarea id={`upload-${key}`} ref={(node) => { fieldRefs.current[key] = node; }} value={fields[key]} onChange={(event) => update(key, event.target.value)} maxLength={5001} aria-invalid={!!errors[key]} aria-describedby={errors[key] ? `error-${key}` : undefined} className={inputClass} rows={4} /> : key === "defaultLanguage" || key === "defaultAudioLanguage" ? <select id={`upload-${key}`} ref={(node) => { fieldRefs.current[key] = node; }} value={fields[key]} onChange={(event) => update(key, event.target.value)} aria-invalid={!!errors[key]} aria-describedby={errors[key] ? `error-${key}` : undefined} className={inputClass}><option value="">Select a language</option>{uploadLanguageOptions.map(([value, label]) => <option key={value} value={value}>{label} ({value})</option>)}</select> : <input id={`upload-${key}`} ref={(node) => { fieldRefs.current[key] = node; }} value={fields[key]} onChange={(event) => update(key, event.target.value)} readOnly={key === "expectedChannelId"} aria-invalid={!!errors[key]} aria-describedby={errors[key] ? `error-${key}` : undefined} className={inputClass} />}
             {key === "stagingFile" && selectedFile && <p className="text-sm text-zinc-300">Selected: {selectedFile.name}{stagedFile === selectedFile ? " — staged" : " — awaiting staging"}</p>}
             {errors[key] && <p id={`error-${key}`} className="text-sm text-red-300">{errors[key]}</p>}
           </div>
         ))}
+        <div className="space-y-2 rounded-lg border border-zinc-700 p-3">
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={fields.selfDeclaredMadeForKids} onChange={(event) => { setFields((current) => ({ ...current, selfDeclaredMadeForKids: event.target.checked })); setPreview(null); }} /> Made for kids</label>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={fields.containsSyntheticMedia} onChange={(event) => { setFields((current) => ({ ...current, containsSyntheticMedia: event.target.checked })); setPreview(null); }} /> Contains synthetic media</label>
+          <label htmlFor="upload-license" className="block text-sm font-medium">License</label>
+          <select id="upload-license" value={fields.license} onChange={(event) => { setFields((current) => ({ ...current, license: event.target.value as UploadFields["license"] })); setPreview(null); }} className={inputClass}>
+            <option value="youtube">YouTube license</option><option value="creativeCommon">Creative Commons</option>
+          </select>
+        </div>
         <div className="flex flex-wrap gap-3">
           <button type="submit" disabled={busy || !channel || finished} className="rounded-lg border border-zinc-600 px-4 py-2 font-medium hover:bg-zinc-800 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">Preview (dry run)</button>
           <button type="button" disabled={busy || !preview || preview !== JSON.stringify(fields) || finished} onClick={() => void submit(false)} className="rounded-lg bg-white px-4 py-2 font-medium text-zinc-950 hover:bg-zinc-200 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">Confirm private upload</button>

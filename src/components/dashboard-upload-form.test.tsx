@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { scheduleInputType, scheduleMessage, schedulePayload, scheduleTimeValue, scheduleTimezoneOptions, stagingFailureMessage, uploadMessage, uploadPayload, validateSchedule, validateUpload } from "./dashboard-upload-form";
+import { scheduleInputType, scheduleMessage, schedulePayload, scheduleTimeValue, scheduleTimezoneOptions, stagingFailureMessage, uploadLanguageOptions, uploadMessage, uploadPayload, validateSchedule, validateUpload } from "./dashboard-upload-form";
 
-const fields = { stagingFile: "clip.mp4", title: "  Short  ", description: "About", expectedChannelId: "UC123" };
+const fields = { stagingFile: "clip.mp4", title: "  Short  ", description: "About", tags: "short", categoryId: "22", defaultLanguage: "en", defaultAudioLanguage: "en", license: "youtube" as const, selfDeclaredMadeForKids: false, containsSyntheticMedia: true, expectedChannelId: "UC123" };
 
 const schedule = { videoId: "video-1", expectedChannelId: "UC123", date: "2030-05-12", time: "09:30", timezone: "America/New_York" };
 
@@ -23,6 +23,12 @@ test("timezone choices are exposed for the scheduling dropdown", () => {
   assert.ok(scheduleTimezoneOptions.some((option) => option.value === "America/New_York"));
   assert.ok(scheduleTimezoneOptions.some((option) => option.value === "Europe/Madrid"));
   assert.ok(scheduleTimezoneOptions.every((option) => option.label && option.value));
+});
+
+test("upload language choices use YouTube-compatible codes", () => {
+  assert.deepEqual(uploadLanguageOptions.slice(0, 4), [["es", "Spanish"], ["en", "English"], ["pt", "Portuguese"], ["fr", "French"]]);
+  assert.ok(uploadLanguageOptions.some(([value]) => value === "ja"));
+  assert.ok(uploadLanguageOptions.every(([value, label]) => /^[a-z]{2}$/.test(value) && label));
 });
 
 test("scheduling validates date, time, channel, video and IANA timezone", () => {
@@ -58,8 +64,8 @@ test("rejects paths and invalid fields before upload", () => {
 });
 
 test("preview and explicit confirmation send only adapter fields", () => {
-  assert.deepEqual(uploadPayload(fields, true), { ...fields, title: "Short", dryRun: true, confirmed: false });
-  assert.deepEqual(uploadPayload(fields, false), { ...fields, title: "Short", dryRun: false, confirmed: true });
+  assert.deepEqual(uploadPayload(fields, true), { ...fields, title: "Short", tags: ["short"], dryRun: true, confirmed: false });
+  assert.deepEqual(uploadPayload(fields, false), { ...fields, title: "Short", tags: ["short"], dryRun: false, confirmed: true });
 });
 
 test("staging failures only suggest fixing the video for validation errors", () => {

@@ -15,7 +15,7 @@ export const localUploadFiles: UploadFileSource = {
 };
 
 export const youtubeUploadProvider: UploadProvider = {
-  async insert({ credentials, file, title, description, operationId, channelId, quotaAccountant }) {
+  async insert({ credentials, file, title, description, tags, categoryId, defaultLanguage, defaultAudioLanguage, license, selfDeclaredMadeForKids, containsSyntheticMedia, operationId, channelId, quotaAccountant }) {
     const oauth = createGoogleOAuthClient();
     oauth.setCredentials({ access_token: credentials.accessToken, refresh_token: credentials.refreshToken });
     const youtube = createYoutubeClient(oauth);
@@ -26,7 +26,10 @@ export const youtubeUploadProvider: UploadProvider = {
     }
     const response = await youtube.videos.insert({
       part: ["snippet", "status"],
-      requestBody: { snippet: { title, description }, status: { privacyStatus: "private" } },
+      requestBody: {
+        snippet: { title, description, tags, categoryId, defaultLanguage, defaultAudioLanguage },
+        status: { privacyStatus: "private", license, selfDeclaredMadeForKids, containsSyntheticMedia },
+      },
       media: { body: file.open() },
     });
     return response.data.id ?? "";

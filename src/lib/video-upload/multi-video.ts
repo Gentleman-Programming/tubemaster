@@ -13,6 +13,13 @@ const itemSchema = z.object({
   filePath: z.string().trim().min(1),
   title: z.string().trim().min(1).max(100),
   description: z.string().max(5000).optional(),
+  tags: z.array(z.string().trim().min(1).max(100)).max(30).optional().refine((tags) => !tags || tags.join(",").length <= 500, "Tags are too long"),
+  categoryId: z.string().regex(/^\d+$/).optional(),
+  defaultLanguage: z.string().trim().min(1).max(35).optional(),
+  defaultAudioLanguage: z.string().trim().min(1).max(35).optional(),
+  license: z.enum(["youtube", "creativeCommon"]).optional(),
+  selfDeclaredMadeForKids: z.boolean().optional(),
+  containsSyntheticMedia: z.boolean().optional(),
 }).strict();
 
 const requestSchema = z.object({
@@ -87,7 +94,7 @@ function identity(request: MultiVideoUploadRequest, items: PreparedItem[]): stri
     request.credentialRef,
     request.expectedChannelId,
     { reviewedDryRun: true },
-    items.map(({ title, description, fileSize, fileSha256 }) => ({ title, description, fileSize, fileSha256 })),
+    items.map(({ title, description, tags, categoryId, defaultLanguage, defaultAudioLanguage, license, selfDeclaredMadeForKids, containsSyntheticMedia, fileSize, fileSha256 }) => ({ title, description, tags, categoryId, defaultLanguage, defaultAudioLanguage, license, selfDeclaredMadeForKids, containsSyntheticMedia, fileSize, fileSha256 })),
   ]);
 }
 
@@ -129,6 +136,9 @@ export function createMultiVideoUploadService(deps: MultiVideoUploadDependencies
         filePath: item.filePath,
         title: item.title,
         description: item.description,
+        tags: item.tags, categoryId: item.categoryId, defaultLanguage: item.defaultLanguage,
+        defaultAudioLanguage: item.defaultAudioLanguage, license: item.license,
+        selfDeclaredMadeForKids: item.selfDeclaredMadeForKids, containsSyntheticMedia: item.containsSyntheticMedia,
         visibility: "private",
         dryRun: true,
       });
@@ -144,7 +154,10 @@ export function createMultiVideoUploadService(deps: MultiVideoUploadDependencies
       status: "validated", operationId, channelId: prepared[0]?.channelId ?? request.expectedChannelId,
       items: prepared.map((item) => ({
         fileSize: item.fileSize, fileSha256: item.fileSha256, operationId: item.operationId,
-        channelId: item.channelId, title: item.title, description: item.description, visibility: "private" as const,
+        channelId: item.channelId, title: item.title, description: item.description, tags: item.tags,
+        categoryId: item.categoryId, defaultLanguage: item.defaultLanguage, defaultAudioLanguage: item.defaultAudioLanguage,
+        license: item.license, selfDeclaredMadeForKids: item.selfDeclaredMadeForKids, containsSyntheticMedia: item.containsSyntheticMedia,
+        visibility: "private" as const,
         estimatedQuotaUnits: VIDEO_INSERT_QUOTA_UNITS,
       })),
       estimatedQuotaUnits: prepared.length * VIDEO_INSERT_QUOTA_UNITS,
@@ -162,6 +175,9 @@ export function createMultiVideoUploadService(deps: MultiVideoUploadDependencies
           const result = await deps.upload({
             credentialRef: request.credentialRef, expectedChannelId: request.expectedChannelId,
             filePath: item.filePath, title: item.title, description: item.description,
+            tags: item.tags, categoryId: item.categoryId, defaultLanguage: item.defaultLanguage,
+            defaultAudioLanguage: item.defaultAudioLanguage, license: item.license,
+            selfDeclaredMadeForKids: item.selfDeclaredMadeForKids, containsSyntheticMedia: item.containsSyntheticMedia,
             visibility: "private", confirmed: true,
           });
           if (result.status !== "uploaded") throw invalid();

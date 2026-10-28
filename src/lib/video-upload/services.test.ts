@@ -7,6 +7,7 @@ import { InMemoryQuotaAccountant } from "../quota/accountant";
 
 function fixture() {
   let writes = 0;
+  let received: unknown;
   const quota = new InMemoryQuotaAccountant();
   const upload = createVideoUploadService({
     authResolver: { async resolve({ credentialRef }) { return { credentialRef, accessToken: "token", scopeSet: new Set() }; } },
@@ -15,7 +16,9 @@ function fixture() {
       return { expectedChannelId };
     } },
     files: { async inspect(path) { if (path !== "video.mp4") throw new Error("missing"); return { size: 3, open: () => Readable.from(["abc"]) }; } },
-    provider: { async insert({ quotaAccountant, operationId, channelId }) {
+    provider: { async insert(args) {
+      received = args;
+      const { quotaAccountant, operationId, channelId } = args;
       writes++;
       quotaAccountant?.record({ operationId, channelId, operation: "videos.insert" });
       return "video-id";
@@ -23,9 +26,9 @@ function fixture() {
     quotaAccountantFactory: () => quota,
     operationIdFactory: () => "operation-1",
   });
-  return { upload, quota, writes: () => writes };
+  return { upload, quota, writes: () => writes, received: () => received };
 }
-const input = { credentialRef: { accessToken: "token" }, expectedChannelId: "active", filePath: "video.mp4", title: "Title", visibility: "private" };
+const input = { credentialRef: { accessToken: "token" }, expectedChannelId: "active", filePath: "video.mp4", title: "Title", description: "Description", tags: ["one", "two"], categoryId: "22", defaultLanguage: "en", defaultAudioLanguage: "en", license: "youtube", selfDeclaredMadeForKids: false, containsSyntheticMedia: true, visibility: "private" as const };
 
 test("invalid metadata, visibility, and file fail without a provider write", async () => {
   const f = fixture();
@@ -51,6 +54,26 @@ test("confirmed upload records insert quota and returns reconciliation ID", asyn
   });
   assert.equal(f.writes(), 1);
   assert.equal(f.quota.entries()[0]?.estimatedUnits, 100);
+  const received = f.received() as {
+    tags: string[];
+    categoryId: string;
+    defaultLanguage: string;
+    defaultAudioLanguage: string;
+    license: string;
+    selfDeclaredMadeForKids: boolean;
+    containsSyntheticMedia: boolean;
+  };
+  assert.deepEqual({
+    tags: received.tags,
+    categoryId: received.categoryId,
+    defaultLanguage: received.defaultLanguage,
+    defaultAudioLanguage: received.defaultAudioLanguage,
+    license: received.license,
+    selfDeclaredMadeForKids: received.selfDeclaredMadeForKids,
+    containsSyntheticMedia: received.containsSyntheticMedia,
+  }, {
+    tags: ["one", "two"], categoryId: "22", defaultLanguage: "en", defaultAudioLanguage: "en", license: "youtube", selfDeclaredMadeForKids: false, containsSyntheticMedia: true,
+  });
 });
 
 test("provider failure maps to stable error with uncertain outcome and no retry", async () => {
