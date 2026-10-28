@@ -37,8 +37,8 @@ Implementation specification for the approved GitHub issue in `Gentleman-Program
 
 ## Tasks
 - T1 (S1-S5): Reconcile approved issue and write implementation record; commit: `pending`.
-- T2 (S2-S5): Implement authenticated search/index routes, OpenAI embedding persistence, page/navigation, docs, and tests; commit: pending.
-- T3 (S5): Run page checks and local smoke; commit: none.
+- T2 (S2-S5): Implement authenticated search/index routes, OpenAI embedding persistence, page/navigation, docs, and tests; commit: `a57f1a5`.
+- T3 (S5): Run page checks and local smoke; commit: none; full test/build/diff checks pass, authenticated indexing unavailable without `OPENAI_API_KEY`.
 - T4 (S5): Review diff and record outcome; commit: pending.
 
 ## Log
@@ -48,3 +48,5 @@ Implementation specification for the approved GitHub issue in `Gentleman-Program
 - L4: OpenAI is the selected embedding provider; the server uses `OPENAI_API_KEY` and the configured/default model without exposing credentials to the browser.
 - L5: The same-page flow indexes a YouTube transcript into per-user SQLite embeddings before searching; replacing one video's index does not delete another video or another user's entries.
 - L6: Focused issue-161 tests pass 13/13; TypeScript, lint, and diff check pass. The current `.env.local` has no `OPENAI_API_KEY`, so live embedding/indexing smoke is intentionally not attempted.
+- L7: Full test suite, production build, and diff check pass. The local server returns `200` for `/dashboard/semantic-search` and advertises the corrected `3102` OAuth callback.
+- L8: Next.js regenerated the repository's `AGENTS.md` instruction block during local dev; that generated change is included in the verification commit to keep the worktree clean.
