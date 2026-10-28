@@ -38,6 +38,15 @@ export const rules = sqliteTable("rules", {
     .$defaultFn(() => new Date()),
 });
 
+export const transcriptIndexEntries = sqliteTable("transcript_index_entries", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  videoId: text("video_id").notNull(),
+  chunkIndex: integer("chunk_index").notNull(),
+  text: text("text").notNull(),
+  identity: text("identity").notNull(),
+  order: integer("entry_order").notNull(),
+});
+
 async function initializeDatabase() {
   await rawClient.executeMultiple(`
     CREATE TABLE IF NOT EXISTS users (
@@ -72,6 +81,14 @@ async function initializeDatabase() {
       estimated_units INTEGER NOT NULL,
       timestamp TEXT NOT NULL,
       bucket_start TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS transcript_index_entries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      video_id TEXT NOT NULL,
+      chunk_index INTEGER NOT NULL,
+      text TEXT NOT NULL,
+      identity TEXT NOT NULL,
+      entry_order INTEGER NOT NULL
     );
   `);
 
@@ -123,7 +140,7 @@ const client = new Proxy(rawClient, {
 
 export const quotaClient = client;
 
-export const db = drizzle(client, { schema: { users, rules } });
+export const db = drizzle(client, { schema: { users, rules, transcriptIndexEntries } });
 
 export type StoredOAuthToken = {
   userId: string;
