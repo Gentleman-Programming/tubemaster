@@ -30,6 +30,9 @@ import {
 } from "@/lib/social/contracts";
 import type { QueueErrorCode, QueueResult, SocialQueueService } from "@/lib/social/queue/service";
 import type { StagedLocalFile } from "@/lib/social/queue/stage-local-file";
+import { createMultiVideoUploadCore } from "@/lib/video-upload";
+import { createMultiUploadAdapter } from "@/lib/video-upload/multi-adapter";
+import { createVideoRecoveryCore } from "@/lib/video-recovery";
 
 loadEnvConfig(process.cwd());
 
@@ -52,6 +55,13 @@ type BestPublishTimesCoreSubset = Partial<
   Pick<ReturnType<typeof createBestPublishTimes>, "fetchBestPublishTimes">
 >;
 
+type UploadMcpCore = {
+  multiUpload: (userId: string, input: unknown) => Promise<unknown>;
+  reconcile: (input: unknown) => Promise<unknown>;
+  reconcileMany: (input: unknown) => Promise<unknown>;
+  cancel: (input: unknown) => Promise<unknown>;
+};
+
 /** Social publishing (S12). The default implementation loads the social modules only when a tool runs. */
 export type SocialMcpCore = {
   configuredPlatforms: () => SocialPlatform[];
@@ -62,7 +72,7 @@ export type SocialMcpCore = {
 
 type McpCore = VideoMetadataCoreSubset &
   PlaylistManagementCoreSubset &
-  BestPublishTimesCoreSubset & { social?: SocialMcpCore };
+  BestPublishTimesCoreSubset & { social?: SocialMcpCore; upload?: UploadMcpCore };
 
 const DEFAULT_VIDEO_UPLOAD_MAX_BYTES = 2 * 1024 * 1024 * 1024;
 
@@ -354,6 +364,42 @@ export const authUserSelectInputSchema = z
   })
   .strict();
 
+export const uploadMultiInputSchema = z.object({
+  credentialRef: credentialSchema.optional(),
+  expectedChannelId: z.string().min(1),
+  items: z.array(z.object({
+    stagingFile: z.string().min(1),
+    title: z.string().trim().min(1).max(100),
+    description: z.string().max(5000).optional(),
+  }).strict()).min(1).max(10),
+  dryRun: z.boolean().optional(),
+  confirmed: z.boolean().optional(),
+  confirmationToken: z.string().optional(),
+}).strict();
+
+export const uploadReconcileInputSchema = z.object({
+  credentialRef: credentialSchema.optional(),
+  expectedChannelId: z.string().min(1),
+  operationId: z.string().trim().min(1),
+  videoId: z.string().trim().min(1).optional(),
+}).strict();
+
+export const uploadReconcileManyInputSchema = z.object({
+  credentialRef: credentialSchema.optional(),
+  expectedChannelId: z.string().min(1),
+  items: z.array(z.object({ operationId: z.string().trim().min(1), videoId: z.string().trim().min(1).optional() }).strict()).min(1).max(10),
+}).strict();
+
+export const uploadCancelInputSchema = z.object({
+  credentialRef: credentialSchema.optional(),
+  expectedChannelId: z.string().min(1),
+  operationId: z.string().trim().min(1),
+  videoId: z.string().trim().min(1),
+  dryRun: z.boolean(),
+  confirmed: z.boolean().optional(),
+  confirmationToken: z.string().optional(),
+}).strict();
+
 const playlistUpdateToolInputSchema = z
   .object({
     credentialRef: credentialSchema.optional(),
@@ -391,7 +437,25 @@ export function createMcpToolHandlers(
     });
   }
 
+  async function resolveUploadUserId(explicitCredentialRef: unknown) {
+    const credentialRef = await resolveCredentialRef(explicitCredentialRef);
+    if (!("userId" in credentialRef) || !credentialRef.userId) {
+      throw new DomainError({ code: "validation_failed", message: "Upload tools require a user-scoped credentialRef" });
+    }
+    return credentialRef.userId;
+  }
+
   const social = core.social ?? defaultSocialCore;
+  const upload: UploadMcpCore = core.upload ?? {
+    multiUpload: createMultiUploadAdapter({
+      upload: async (_userId, input) => createMultiVideoUploadCore()(input),
+      stagingRoot: process.env.VIDEO_UPLOAD_STAGING_ROOT ?? `${process.cwd()}/staging`,
+      maxBytes: Number(process.env.VIDEO_UPLOAD_MAX_BYTES ?? DEFAULT_VIDEO_UPLOAD_MAX_BYTES),
+    }),
+    reconcile: (input) => createVideoRecoveryCore().reconcile(input),
+    reconcileMany: (input) => createVideoRecoveryCore().reconcileMany(input),
+    cancel: (input) => createVideoRecoveryCore().cancel(input),
+  };
 
   /** The social queue is keyed by the Google `sub`, the same id the active auth context stores. */
   async function resolveSocialUserId(explicitCredentialRef: { userId: string } | undefined) {
@@ -571,6 +635,51 @@ export function createMcpToolHandlers(
           return bestPublishTimesErrorResult(result);
         }
         return toolSuccessResult(result);
+      } catch (error) {
+        return toolErrorResult(error);
+      }
+    },
+
+    async uploadMulti(input: unknown): Promise<ToolResponse> {
+      const parsedInput = uploadMultiInputSchema.safeParse(input);
+      if (!parsedInput.success) return mapValidationErrorResult(parsedInput.error);
+      try {
+        const { credentialRef, ...payload } = parsedInput.data;
+        const userId = await resolveUploadUserId(credentialRef);
+        return toolSuccessResult(await upload.multiUpload(userId, payload) as Record<string, unknown>);
+      } catch (error) {
+        return toolErrorResult(error);
+      }
+    },
+
+    async uploadReconcile(input: unknown): Promise<ToolResponse> {
+      const parsedInput = uploadReconcileInputSchema.safeParse(input);
+      if (!parsedInput.success) return mapValidationErrorResult(parsedInput.error);
+      try {
+        const credentialRef = await resolveCredentialRef(parsedInput.data.credentialRef);
+        return toolSuccessResult(await upload.reconcile({ ...parsedInput.data, credentialRef }) as Record<string, unknown>);
+      } catch (error) {
+        return toolErrorResult(error);
+      }
+    },
+
+    async uploadReconcileMany(input: unknown): Promise<ToolResponse> {
+      const parsedInput = uploadReconcileManyInputSchema.safeParse(input);
+      if (!parsedInput.success) return mapValidationErrorResult(parsedInput.error);
+      try {
+        const credentialRef = await resolveCredentialRef(parsedInput.data.credentialRef);
+        return toolSuccessResult(await upload.reconcileMany({ ...parsedInput.data, credentialRef }) as Record<string, unknown>);
+      } catch (error) {
+        return toolErrorResult(error);
+      }
+    },
+
+    async uploadCancel(input: unknown): Promise<ToolResponse> {
+      const parsedInput = uploadCancelInputSchema.safeParse(input);
+      if (!parsedInput.success) return mapValidationErrorResult(parsedInput.error);
+      try {
+        const credentialRef = await resolveCredentialRef(parsedInput.data.credentialRef);
+        return toolSuccessResult(await upload.cancel({ ...parsedInput.data, credentialRef }) as Record<string, unknown>);
       } catch (error) {
         return toolErrorResult(error);
       }
@@ -941,6 +1050,42 @@ export function createMcpServer(
       inputSchema: bestPublishTimesInputSchema,
     },
     (args) => handlers.bestPublishTimes(args)
+  );
+
+  server.registerTool(
+    "upload_multi",
+    {
+      description: "Preview or explicitly confirm a bounded multi-video private upload using staged files. dryRun returns the confirmation envelope; confirmed execution never publishes automatically. credentialRef is OPTIONAL and falls back to active local auth context.",
+      inputSchema: uploadMultiInputSchema,
+    },
+    (args) => handlers.uploadMulti(args)
+  );
+
+  server.registerTool(
+    "upload_reconcile",
+    {
+      description: "Reconcile one upload operation without retrying it. Returns success, absence, unsupported, or unknown status while preserving operationId and expectedChannelId.",
+      inputSchema: uploadReconcileInputSchema,
+    },
+    (args) => handlers.uploadReconcile(args)
+  );
+
+  server.registerTool(
+    "upload_reconcile_many",
+    {
+      description: "Reconcile ordered upload operations without retrying them; each result preserves its input index and operation identity.",
+      inputSchema: uploadReconcileManyInputSchema,
+    },
+    (args) => handlers.uploadReconcileMany(args)
+  );
+
+  server.registerTool(
+    "upload_cancel",
+    {
+      description: "Preview or explicitly confirm return-to-private recovery for a video. Provider capability, channel, quota and confirmation guards remain in the shared recovery core.",
+      inputSchema: uploadCancelInputSchema,
+    },
+    (args) => handlers.uploadCancel(args)
   );
 
   server.registerTool(
