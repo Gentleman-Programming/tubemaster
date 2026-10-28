@@ -115,7 +115,7 @@ export function DashboardUploadForm() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [stagedFile, setStagedFile] = useState<File | null>(null);
   const inFlight = useRef(false);
-  const fieldRefs = useRef<Partial<Record<keyof UploadFields, HTMLInputElement | HTMLTextAreaElement | null>>>({});
+  const fieldRefs = useRef<Partial<Record<keyof UploadFields, HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null>>>({});
 
   useEffect(() => {
     let live = true;
