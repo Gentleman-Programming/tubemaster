@@ -31,8 +31,8 @@ Implementation specification for the approved GitHub issue in `Gentleman-Program
 
 ## Tasks
 - T1 (S1-S5): Reconcile transcript dependency commits with `origin/feature-2`; commit: `95fc37d`.
-- T2 (S2-S5): Implement the provider-neutral semantic-search boundary and focused tests; commit: pending.
-- T3 (S5): Run focused and repository checks; commit: none.
+- T2 (S2-S5): Implement the provider-neutral semantic-search boundary and focused tests; commit: `42433c3`.
+- T3 (S5): Run focused and repository checks; commit: none; build blocked by isolated-worktree dependency symlink.
 
 ## Log
 - L1: transcripts → embeddings/semantic search
@@ -40,3 +40,4 @@ Implementation specification for the approved GitHub issue in `Gentleman-Program
 - L3: The full merge of the historical transcript branch conflicted across unrelated current feature-2 files; the implementation branch retained feature-2 and restored only the transcript chunk/index/embedding dependency surfaces plus the transcript index table.
 - L4: Commit `95fc37d` records the dependency restoration boundary; it is 626 authored lines because the historical dependency surfaces were absent from current feature-2.
 - L5: Focused transcript tests pass 30/30; full test suite, lint, TypeScript, and diff check pass. Build remains unavailable because Turbopack rejects the isolated worktree's symlinked node_modules as outside the filesystem root.
+- L6: Commit `42433c3` records the semantic-search boundary and focused tests; final branch review is clean and the branch is two commits ahead of `origin/feature-2`.
