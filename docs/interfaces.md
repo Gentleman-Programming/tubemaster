@@ -86,7 +86,7 @@ npm run cli:video-metadata -- best-times --timezone <IANA> [--userId <USER_ID>] 
 
 ### Upload and recovery commands
 
-`upload multi` accepts a JSON `--items` array of staged files (`stagingFile`, `title`, optional `description`). Use `--dryRun` first; the returned confirmation token is required with `--confirmed` for execution. `upload reconcile` and `upload reconcile-many` are read-only and never retry a mutation. `upload cancel` requires a dry-run preview and matching `--confirmed --confirmationToken`; it returns to private only when the provider supports the operation.
+`upload multi` accepts a JSON `--items` array of staged files (`stagingFile`, `title`, optional `description`, `tags`, `categoryId`, `defaultLanguage`, `defaultAudioLanguage`, `license`, `selfDeclaredMadeForKids`, and `containsSyntheticMedia`). Use `--dryRun` first; the returned confirmation token is required with `--confirmed` for execution. Uploads remain private; thumbnails, localizations, chapters, recording metadata, scheduling, and publishing are not part of this contract. `upload reconcile` and `upload reconcile-many` are read-only and never retry a mutation. `upload cancel` requires a dry-run preview and matching `--confirmed --confirmationToken`; it returns to private only when the provider supports the operation.
 
 ```bash
 npm run cli:video-metadata -- upload multi --expectedChannelId <UC...> --items '[{"stagingFile":"video.mp4","title":"..."}]' --dryRun

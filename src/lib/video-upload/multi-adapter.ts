@@ -10,6 +10,13 @@ const itemSchema = z.object({
   stagingFile: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$/).refine((value) => value !== "." && value !== ".."),
   title: z.string().trim().min(1).max(100),
   description: z.string().max(5000).optional(),
+  tags: z.array(z.string().trim().min(1).max(100)).max(30).optional().refine((tags) => !tags || tags.join(",").length <= 500, "Tags are too long"),
+  categoryId: z.string().regex(/^\d+$/).optional(),
+  defaultLanguage: z.string().trim().min(1).max(35).optional(),
+  defaultAudioLanguage: z.string().trim().min(1).max(35).optional(),
+  license: z.enum(["youtube", "creativeCommon"]).optional(),
+  selfDeclaredMadeForKids: z.boolean().optional(),
+  containsSyntheticMedia: z.boolean().optional(),
 }).strict();
 const requestSchema = z.object({
   expectedChannelId: z.string().trim().min(1),
@@ -95,7 +102,7 @@ export function createMultiUploadAdapter(deps: {
       }
       return await deps.upload(userId, {
         credentialRef: { userId }, expectedChannelId: request.expectedChannelId,
-        items: request.items.map((item, index) => ({ filePath: uploadFiles[index]!, title: item.title, description: item.description })),
+        items: request.items.map((item, index) => ({ filePath: uploadFiles[index]!, title: item.title, description: item.description, tags: item.tags, categoryId: item.categoryId, defaultLanguage: item.defaultLanguage, defaultAudioLanguage: item.defaultAudioLanguage, license: item.license, selfDeclaredMadeForKids: item.selfDeclaredMadeForKids, containsSyntheticMedia: item.containsSyntheticMedia })),
         dryRun: request.dryRun, confirmed: request.confirmed, confirmationToken: request.confirmationToken,
       });
     } finally {

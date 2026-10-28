@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createUploadAdapter } from "./adapter";
 
-const input = { stagingFile: "video.mp4", expectedChannelId: "channel", title: "Title", confirmed: true };
+const input = { stagingFile: "video.mp4", expectedChannelId: "channel", title: "Title", tags: ["one"], categoryId: "22", defaultLanguage: "en", defaultAudioLanguage: "en", license: "youtube", selfDeclaredMadeForKids: false, containsSyntheticMedia: true, confirmed: true };
 
 test("staging validation rejects unsafe references before calling core", async () => {
   const root = await mkdtemp(join(tmpdir(), "upload-adapter-"));
@@ -32,7 +32,7 @@ test("passes only private user-scoped requests to core, including dry runs", asy
     return { status: "validated", operationId: "op", channelId: "channel", dryRun: true };
   } });
   assert.equal((await upload("user", { ...input, dryRun: true, confirmed: false })).status, "validated");
-  assert.deepEqual(requests, [{ credentialRef: { userId: "user" }, expectedChannelId: "channel", filePath: join(root, "video.mp4"), title: "Title", description: undefined, visibility: "private", dryRun: true, confirmed: false }]);
+  assert.deepEqual(requests, [{ credentialRef: { userId: "user" }, expectedChannelId: "channel", filePath: join(root, "video.mp4"), title: "Title", description: undefined, tags: ["one"], categoryId: "22", defaultLanguage: "en", defaultAudioLanguage: "en", license: "youtube", selfDeclaredMadeForKids: false, containsSyntheticMedia: true, visibility: "private", dryRun: true, confirmed: false }]);
   assert.deepEqual(await readdir(root), ["video.mp4"]);
 });
 

@@ -10,8 +10,8 @@ const base = {
   credentialRef: { userId: "owner" },
   expectedChannelId: "channel-1",
   items: [
-    { filePath: "one.mp4", title: "One" },
-    { filePath: "two.mp4", title: "Two", description: "Second" },
+    { filePath: "one.mp4", title: "One", tags: ["one"], categoryId: "22", defaultLanguage: "en", defaultAudioLanguage: "en", license: "youtube", selfDeclaredMadeForKids: false, containsSyntheticMedia: true },
+    { filePath: "two.mp4", title: "Two", description: "Second", tags: ["two"] },
   ],
 };
 
@@ -62,6 +62,7 @@ test("previews every item deterministically and returns a signed confirmation bi
   assert.equal(result.estimatedQuotaUnits, 200);
   assert.deepEqual(result.items.map((item) => item.estimatedQuotaUnits), [100, 100]);
   assert.deepEqual(result.items.map((item) => item.title), ["One", "Two"]);
+  assert.deepEqual(result.items.map((item) => item.tags), [["one"], ["two"]]);
   assert.equal("filePath" in result.items[0]!, false);
   assert.deepEqual(result.items.map((item) => item.fileSha256), [await digest("one-bytes"), await digest("two-bytes")]);
   assert.match(result.confirmationToken, /^1700000600\.[a-f0-9]{64}$/);

@@ -2,7 +2,17 @@ import type { CredentialRef, ResolvedCredentials } from "../video-metadata/contr
 import type { QuotaAccountant } from "../quota/accountant";
 import type { Readable } from "node:stream";
 
-export type UploadRequest = {
+export type UploadMetadata = {
+  tags?: string[];
+  categoryId?: string;
+  defaultLanguage?: string;
+  defaultAudioLanguage?: string;
+  license?: "youtube" | "creativeCommon";
+  selfDeclaredMadeForKids?: boolean;
+  containsSyntheticMedia?: boolean;
+};
+
+export type UploadRequest = UploadMetadata & {
   credentialRef: CredentialRef;
   expectedChannelId: string;
   filePath: string;
@@ -25,6 +35,13 @@ export type UploadProvider = {
     file: UploadFile;
     title: string;
     description: string;
+    tags?: string[];
+    categoryId?: string;
+    defaultLanguage?: string;
+    defaultAudioLanguage?: string;
+    license?: "youtube" | "creativeCommon";
+    selfDeclaredMadeForKids?: boolean;
+    containsSyntheticMedia?: boolean;
     operationId: string;
     channelId: string;
     quotaAccountant?: QuotaAccountant;

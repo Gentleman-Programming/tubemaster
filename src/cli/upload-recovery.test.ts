@@ -23,7 +23,18 @@ function makeAuth() {
   return { resolveEffectiveCredentialRef: async () => ({ userId: "active-user" }) };
 }
 
-const commandInput = JSON.stringify([{ stagingFile: "video.mp4", title: "Video", description: "Description" }]);
+const commandInput = JSON.stringify([{
+  stagingFile: "video.mp4",
+  title: "Video",
+  description: "Description",
+  tags: ["one", "two"],
+  categoryId: "22",
+  defaultLanguage: "en",
+  defaultAudioLanguage: "en",
+  license: "youtube",
+  selfDeclaredMadeForKids: false,
+  containsSyntheticMedia: true,
+}]);
 
 test("CLI upload multi forwards staged items and preserves preview/confirm boundary", async () => {
   const calls: unknown[] = [];

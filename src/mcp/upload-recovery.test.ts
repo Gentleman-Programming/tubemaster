@@ -32,7 +32,18 @@ const baseCore = {
   removeVideosFromPlaylist: async () => ({}),
 };
 
-const items = [{ stagingFile: "video.mp4", title: "Video", description: "Description" }];
+const items = [{
+  stagingFile: "video.mp4",
+  title: "Video",
+  description: "Description",
+  tags: ["one", "two"],
+  categoryId: "22",
+  defaultLanguage: "en",
+  defaultAudioLanguage: "en",
+  license: "youtube",
+  selfDeclaredMadeForKids: false,
+  containsSyntheticMedia: true,
+}];
 
 test("MCP upload handlers bind the active user and preserve preview/confirm payloads", async () => {
   const calls: unknown[] = [];

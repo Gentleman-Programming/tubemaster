@@ -49,6 +49,9 @@ export function createVideoUploadService(deps: VideoUploadDependencies) {
     try {
       const videoId = await deps.provider.insert({
         credentials, file, title: request.title, description: request.description ?? "",
+        tags: request.tags, categoryId: request.categoryId, defaultLanguage: request.defaultLanguage,
+        defaultAudioLanguage: request.defaultAudioLanguage, license: request.license,
+        selfDeclaredMadeForKids: request.selfDeclaredMadeForKids, containsSyntheticMedia: request.containsSyntheticMedia,
         operationId, channelId: channel.expectedChannelId, quotaAccountant,
       });
       if (!videoId) throw new Error("Upload response did not include a video ID");
