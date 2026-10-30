@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@libsql/client": "^0.17.2",
-    "@modelcontextprotocol/sdk": "1.32.1",
+    "@modelcontextprotocol/sdk": "1.32.2",
     "drizzle-orm": "^0.45.2",
     "googleapis": "^188.0.0",
     "next": "16.4.2",
