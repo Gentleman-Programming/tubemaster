@@ -1,0 +1,4 @@
+T1 S1-S5 reconcile approved issue and write implementation record — route: planning — commit: pending
+T2 S2-S5 implement authenticated search route/page/navigation with tests — route: implementation — commit: pending
+T3 S5 run page checks and local smoke — route: verification — commit: none
+T4 S5 review diff and record outcome — route: checking — commit: pending
