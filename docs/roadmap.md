@@ -1,6 +1,6 @@
 # TubeMaster roadmap: guarded channel operations before automation
 
-TubeMaster is evolving from a channel-operations workspace toward agent-assisted analysis and publishing. The six phases below are priorities, not a release commitment. Every write remains human-authorized, channel-bound, previewable where applicable, and subject to the repository's safety contracts.
+TubeMaster is evolving from a channel-operations workspace toward agent-assisted analysis and publishing. The seven phases below are priorities, not a release commitment. Every write remains human-authorized, channel-bound, previewable where applicable, and subject to the repository's safety contracts.
 
 ## Quick path
 
@@ -26,6 +26,7 @@ These are controlled foundations, not an autonomous publishing product. Analytic
 | 4. Intelligent transcripts | Caption/provider fallback, authenticated/public acquisition, local Whisper and timestamps | Local indexing, embeddings and semantic search |
 | 5. Editorial intelligence / SEO | Existing metadata preview and rule-based editorial foundations | Keywords, related videos, ideas, recommendations and editorial calendar workflows |
 | 6. Advanced automation | Human-confirmed private upload, reviewed multi-video upload, metadata completion, scheduling, recovery/cancellation, and CLI/MCP adapters | Review/history UI and operational validation on a test channel |
+| 7. Creator intelligence benchmark | No implementation committed; this phase records candidate capabilities for future planning | Keyword and trend research, data-backed ideas, competitor/outlier analysis, explainable metadata recommendations, thumbnail workflows, long-form-to-Shorts analysis, coaching, and cross-platform insights |
 
 ## Phase 6: guarded Shorts upload and scheduling
 
@@ -49,6 +50,12 @@ Future implementation must separately define transcript chunking, embedding mode
 - Estimate and observe quota for upload and related operations without presenting estimates as Google's authoritative balance.
 - Keep preparation, validation, preview, upload, scheduling, status and cancellation separately reviewable. Read/status calls must not mutate.
 - Record only safe operational context, preserve actionable errors, and keep compensation/recovery explicit.
+
+## Phase 7: creator intelligence benchmark
+
+vidIQ is a reference point for a possible future creator-intelligence phase, not a dependency or an integration commitment. The candidate capability set includes keyword and trend research; data-backed video ideas; competitor and outlier analysis; explainable title, description and tag recommendations; thumbnail review workflows; long-form-to-Shorts opportunity analysis; coaching-style guidance; and cross-platform insights. See [vidIQ features](https://vidiq.com/features/) for the external reference.
+
+Any future implementation must remain provider-neutral and separate research from mutation: recommendations should be read-only, attributable to observed data, previewable, and reviewable before any metadata or publishing action. Provider credentials, model selection, quotas, persistence, and authenticated routes require a separate approved design. This phase must not authorize autonomous publishing, automatic script or media generation, unreviewed bulk changes, or copying vidIQ-specific response shapes into TubeMaster contracts.
 
 ## Non-goals
 
