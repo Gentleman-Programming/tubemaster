@@ -28,16 +28,16 @@ Full walkthrough: **[docs/getting-started.md](docs/getting-started.md)**. The de
 
 | Interface | Entry point | Current scope |
 | --- | --- | --- |
-| Web UI | `http://localhost:3102` | Browse/select/export videos, playlist actions, rules, estimated quota usage, read-only best publish times panel, social publishing to Instagram and TikTok (preview + confirm, scheduling) |
-| CLI | `npm run cli:video-metadata -- <command>` | Auth/channel context, metadata and transcript workflows, playlists, guarded `upload multi|reconcile|reconcile-many|cancel`, read-only `best-times --timezone <IANA>`; quota has a separate command |
-| MCP Server (stdio) | `npm run mcp:video-metadata` | Context, metadata, transcripts, playlists, guarded `upload_multi|upload_reconcile|upload_reconcile_many|upload_cancel`, read-only `best_publish_times` (`timezone` required), Instagram/TikTok publishing (`social_*`: stage → preview → human approval → confirm; [guide](docs/social-publishing.md#using-it-from-mcp)); no login or registered quota tool |
-| API Route Handlers | `/api/youtube/videos`, `/api/video-metadata/*`, `/api/youtube/best-publish-times` | Session-authenticated UI operations, metadata/transcripts, estimated quota usage |
+| Web UI | `http://localhost:3102` | Browse/select/export videos, playlists, rules, analytics, quota, calendar, private upload, and Instagram/TikTok publishing with preview/confirmation |
+| CLI | `npm run cli:video-metadata -- <command>` | Auth/channel context, metadata/transcripts, playlists, guarded upload/recovery commands, read-only best-publish-time analysis, and separate quota reporting |
+| MCP Server (stdio) | `npm run mcp:video-metadata` | Context, metadata, transcripts, playlists, guarded upload/recovery tools, best-publish-time analysis, and Instagram/TikTok publishing; no login or registered quota tool |
+| API Route Handlers | `/api/youtube/*`, `/api/video-metadata/*`, `/api/social/*`, `/api/quota/usage` | Session-authenticated UI operations for metadata, transcripts, analytics, upload/scheduling, social publishing, and estimated quota usage |
 
 Detailed usage by interface: **[docs/interfaces.md](docs/interfaces.md)**
 
 ## Roadmap boundary
 
-An authenticated analytics summary API (`GET /api/youtube/analytics`) and local selected-video JSON/CSV export already exist. The optional analytics API requires an OAuth grant with `https://www.googleapis.com/auth/yt-analytics.readonly`, which default core login scopes omit; existing users must re-authenticate after adding it to the authorization request. See [analytics setup](docs/getting-started.md#13-configure-oauth-consent-screen). Expanded analytics/reporting, future metadata/transcript improvements, and search are separate roadmap increments—not capabilities promised in one release. TubeMaster does not autonomously publish content.
+Authenticated analytics, reporting, upload/recovery, scheduling, and social publishing foundations are already present. Analytics requires an OAuth grant with `https://www.googleapis.com/auth/yt-analytics.readonly`; existing users must re-authenticate after adding it to the authorization request. See [analytics setup](docs/getting-started.md#13-configure-oauth-consent-screen). Transcript indexing, embeddings, semantic search, broader editorial intelligence, and durable history remain separate roadmap increments—not capabilities promised in one release. TubeMaster does not autonomously publish content.
 
 ## Operation audit events
 

@@ -8,16 +8,16 @@ TubeMaster is a channel-operations workspace spanning **Web UI, CLI, MCP, and AP
 
 | Surface | First workflows |
 | --- | --- |
-| Web UI | Browse, select, and export loaded videos; manage playlists and rules; view estimated quota usage |
-| CLI | Set channel context; list videos, acquire transcripts, preview or guarded-apply metadata, and manage playlists |
-| MCP | Use context, metadata, transcript, and playlist tools after CLI login; no MCP login or registered quota tool |
-| API | Use authenticated route handlers for video/playlist/rule workflows, metadata/transcripts, and quota estimates |
+| Web UI | Browse/export videos; manage playlists and rules; view analytics, quota, calendar, upload, and social publishing workflows |
+| CLI | Set channel context; list videos, acquire transcripts, preview/apply metadata, manage playlists, upload/recover private videos, and inspect quota/best publish times |
+| MCP | Use context, metadata, transcript, playlist, upload/recovery, best-publish-time, and social tools after CLI login; no MCP login flow |
+| API | Use authenticated route handlers for video, playlist, rule, metadata, transcript, analytics, upload/scheduling, social, and quota workflows |
 
 See [interface details](./interfaces.md) for exact commands and boundaries. Audit events are best-effort service logs, not an audit database. The authenticated analytics dashboard supports 7/30/90-day presets, custom ranges up to 90 days, daily metrics, traffic-source breakdowns, period-over-period comparison deltas, and local CSV export. Comparisons use the immediately preceding equivalent period and remain read-only; there is no autonomous publishing or one-release promise.
 
 ## Prerequisites
 
-- Node.js `>=20.9.0` (required by Next.js 16.2.2)
+- Node.js `>=20.9.0` (required by Next.js 16.4.2)
 - npm (bundled with Node.js)
 
 ## 1) Google Cloud Console setup
@@ -106,7 +106,7 @@ npm ci
 npm run dev
 ```
 
-The development server always uses port `3102` so the OAuth callback remains stable. App URL: `http://localhost:3102`.
+The development server uses port `3102` so the OAuth callback remains stable. App URL: `http://localhost:3102`.
 
 ---
 
