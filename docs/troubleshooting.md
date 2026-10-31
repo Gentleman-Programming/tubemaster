@@ -179,7 +179,7 @@ npm run dev
 # open http://localhost:3102
 ```
 
-A browser error at `http://localhost:3000` with `ERR_CONNECTION_REFUSED` means it is pointed at the wrong port or no server is running there. This is separate from an OAuth credential error.
+A browser error at `http://localhost:3102` with `ERR_CONNECTION_REFUSED` means no development server is running there. This is separate from an OAuth credential error.
 
 - Web callback uses `NEXTAUTH_URL` + `/api/auth/callback/google`
 - CLI callback uses `http://127.0.0.1:<CLI_OAUTH_CALLBACK_PORT|8787>`
