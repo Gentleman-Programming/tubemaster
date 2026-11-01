@@ -25,7 +25,9 @@ Expanded analytics/reporting and future metadata, transcript, and search increme
 
 The dedicated `/dashboard/semantic-search` page lists videos from the authenticated channel through the existing `/api/youtube/videos` read-only route. Users can filter loaded videos, select one, several, or all visible videos, clear selection, and retain a manual URL/video-ID fallback. Selection does not call an embedding provider, persist vectors, mutate YouTube, or return search matches; the provider/model integration remains deferred.
 
-Future work should choose and document the embedding model/provider before adding server-side indexing and search routes. The integration should preserve authenticated user isolation, keep provider credentials server-side, define transcript chunking and replacement behavior, and add focused route/service tests plus an authenticated browser smoke test.
+The provider-free indexing foundation now defines scoped transcript document/chunk persistence and local usage accounting through internal services; it does not expose an indexing route, persist vectors, or call an embedding provider. Each indexed video is scoped by authenticated `userId` and `channelId`, replaced transactionally by video and source revision, and accounted separately from YouTube API quota units. The existing page remains provider-deferred and read-only.
+
+Future work may choose and document the embedding model/provider before adding server-side indexing and search routes. That integration must preserve the current user/channel isolation, keep provider credentials server-side, define vector replacement behavior, and add focused route/service tests plus an authenticated browser smoke test.
 
 
 ## Operation audit events
