@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { withAuditRoute } from "@/lib/audit/request";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db, rules } from "@/lib/db";
@@ -29,7 +30,7 @@ function videoMatchesRule(
   }
 }
 
-export async function POST() {
+async function postHandler() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -69,3 +70,5 @@ export async function POST() {
 
   return NextResponse.json({ matched: results.length, results });
 }
+
+export const POST = withAuditRoute("rules.run", postHandler);

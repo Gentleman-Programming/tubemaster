@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { emitAuditEvent } from "./adapters/logger";
+import { emitAuditEvent, getCredentialUserId } from "./adapters/logger";
 import { YOUTUBE_READ_SCOPE, YOUTUBE_WRITE_SCOPE } from "@/lib/auth";
 import type { QuotaAccountant } from "../quota/accountant";
 import {
@@ -228,7 +228,7 @@ export function createVideoMetadataServices(deps: ServiceDependencies) {
     async listVideos(input: unknown) {
       const parsedInput = parseWithSchema(listVideosInputSchema, input, "list videos input");
       const operationId = deps.operationIdFactory?.() ?? randomUUID();
-      const audit = (phase: string, extra: Record<string, unknown> = {}) => emitAuditEvent(deps.logger, `video_metadata.list.${phase}`, { operationId, channelId: parsedInput.channelId, ...extra });
+      const audit = (phase: string, extra: Record<string, unknown> = {}) => emitAuditEvent(deps.logger, `video_metadata.list.${phase}`, { operationId, channelId: parsedInput.channelId, ...extra }, getCredentialUserId(parsedInput.credentialRef));
       audit("start");
       try {
         const credentials = await deps.authResolver.resolve({
@@ -263,7 +263,7 @@ export function createVideoMetadataServices(deps: ServiceDependencies) {
     async getTranscript(input: unknown) {
       const parsedInput = parseWithSchema(transcriptInputSchema, input, "transcript input");
       const operationId = deps.operationIdFactory?.() ?? randomUUID();
-      const audit = (phase: string, extra: Record<string, unknown> = {}) => emitAuditEvent(deps.logger, `transcript.get.${phase}`, { operationId, videoId: parsedInput.videoId, ...extra });
+      const audit = (phase: string, extra: Record<string, unknown> = {}) => emitAuditEvent(deps.logger, `transcript.get.${phase}`, { operationId, videoId: parsedInput.videoId, ...extra }, getCredentialUserId(parsedInput.credentialRef));
       audit("start");
       try {
         const selectedProvider = parsedInput.provider ?? process.env.YOUTUBE_TRANSCRIPT_PROVIDER ?? "youtube-captions";
@@ -305,7 +305,7 @@ export function createVideoMetadataServices(deps: ServiceDependencies) {
         "preview metadata input"
       );
       const operationId = deps.operationIdFactory?.() ?? randomUUID();
-      const audit = (phase: string, extra: Record<string, unknown> = {}) => emitAuditEvent(deps.logger, `video_metadata.preview.${phase}`, { operationId, videoId: parsedInput.videoId, ...extra });
+      const audit = (phase: string, extra: Record<string, unknown> = {}) => emitAuditEvent(deps.logger, `video_metadata.preview.${phase}`, { operationId, videoId: parsedInput.videoId, ...extra }, getCredentialUserId(parsedInput.credentialRef));
       audit("start");
       try {
         const credentials = await deps.authResolver.resolve({
@@ -459,7 +459,7 @@ export function createVideoMetadataServices(deps: ServiceDependencies) {
       );
       const operationId = deps.operationIdFactory?.() ?? randomUUID();
       let channelId: string | undefined;
-      const audit = (phase: string, extra: Record<string, unknown> = {}) => emitAuditEvent(deps.logger, `video_metadata.apply.${phase}`, { operationId, channelId, videoId: parsedInput.videoId, dryRun: parsedInput.dryRun ?? false, ...extra });
+      const audit = (phase: string, extra: Record<string, unknown> = {}) => emitAuditEvent(deps.logger, `video_metadata.apply.${phase}`, { operationId, channelId, videoId: parsedInput.videoId, dryRun: parsedInput.dryRun ?? false, ...extra }, getCredentialUserId(parsedInput.credentialRef));
       audit("start");
       try {
         const credentials = await deps.authResolver.resolve({

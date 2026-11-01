@@ -17,7 +17,7 @@ TubeMaster is a channel-operations workspace across Web UI, CLI, MCP, and API su
 | Social publishing | Web UI and MCP Instagram/TikTok flows with stage → preview → human confirmation → publish/schedule/cancel |
 | Analytics summary | Authenticated `GET /api/youtube/analytics` with a range of up to 90 days; the dashboard offers 7/30/90-day presets, custom dates, daily totals, traffic-source breakdowns, period comparison, and local CSV export |
 | Quota visibility | Web UI, separate quota CLI, and quota API; MCP quota handler is not registered |
-| Operation audit events | Best-effort metadata, transcript, and playlist service logs; not a queryable audit store |
+| Operation audit history | Sanitized metadata, transcript, and playlist lifecycle events persist for 90 days; authenticated history API and dashboard are available; broader operation adapters remain in progress |
 
 Expanded analytics/reporting and future metadata, transcript, and search increments are separate roadmap work, not one-release commitments. No autonomous publishing is wired.
 
@@ -32,7 +32,7 @@ Future work should choose and document the embedding model/provider before addin
 
 Service workflows emit `start` before work and one terminal `success`, `dry_run` (metadata apply only), or `failure` event afterward. Vocabulary: `video_metadata.list`, `video_metadata.preview`, `video_metadata.apply`, `transcript.get`, and `playlist.list`, `playlist.create`, `playlist.update`, `playlist.delete`, `playlist.add_videos`, `playlist.remove_videos`, each followed by `.<phase>`. The logger writes `{ level, event, timestamp, context }` JSON lines; `timestamp` is an ISO date. Context is strictly restricted to scalar `operationId`, `channelId`, `videoId`, `playlistId`, `dryRun`, `count`, `code`, and `transcriptStatus`. Channel IDs appear only when resolved/available; operation IDs correlate lifecycle events and quota context where passed. Failure `code` is a mapped domain code, never a raw provider error. No credential, title, description, editorial prompt, transcript text, or nested payload is logged. A batch operation can succeed with per-item failures; its existing response retains those details without embedding them in audit events.
 
-The default metadata logger streams JSON lines to stderr. Playlist events are emitted only if a logger is injected into playlist services. These events are not stored in SQLite and have no app-managed retention or query API; retention is determined by the process supervisor or log collector. Audit delivery is best-effort, not durable, and does not alter responses or block writes.
+The default metadata and playlist logger streams JSON lines to stderr and asynchronously appends the same sanitized event to SQLite when a durable sink is configured. User identity is carried outside the stderr context and scopes history queries; no credentials, titles, prompts, transcript text, provider payloads, or local paths are persisted. The fixed retention window is 90 days; cleanup removes only older events and is observational. Durable persistence failures are swallowed after safe diagnostics so they cannot alter responses, retry provider mutations, or block writes.
 
 ## Web UI (`http://localhost:3102`)
 
@@ -71,6 +71,9 @@ The local development server uses port `3102` by default. Set `NEXTAUTH_URL=http
 - **Quota usage** (`/dashboard/quota`)
   - View estimated usage grouped by bucket date, operation, and channel.
   - Unassigned usage is shown as `Unassigned`; estimates are observational and not authoritative Google quota usage.
+- **Audit history** (`/dashboard/audit`)
+  - View the authenticated user's sanitized lifecycle events retained for 90 days.
+  - The page is read-only and never exposes stored credentials or provider payloads.
 
 ---
 
@@ -202,6 +205,14 @@ All routes are App Router handlers and require authenticated session user.
 - `GET /api/youtube/scheduled`
   - Read-only list of the session user's 50 most recent uploads that are private and have a scheduled `publishAt`: `{ kind: "youtube-scheduled-videos", videos: [{ videoId, title, publishAt, thumbnailUrl? }] }`, sorted by `publishAt`. Used by the Calendar page.
   - Requires `https://www.googleapis.com/auth/youtube.readonly`. Errors: `AUTH_REQUIRED` (401), `AUTH_SCOPE_INSUFFICIENT` (403), `YOUTUBE_API_ERROR` (502). Each call records estimated `channels.list`, `playlistItems.list` and `videos.list` quota.
+
+### Audit history API
+
+- `GET /api/audit/history`
+  - Requires an authenticated session and always scopes results to the session user.
+  - Optional `limit` is an integer from 1 to 100; unknown query parameters are rejected.
+  - The response is `{ events: [{ id, operationId, event, timestamp, context }] }`; context contains only the existing sanitized scalar allowlist.
+  - The route performs bounded 90-day cleanup before reading and returns `401`, `422`, or `503` without mutating operation workflows.
 
 ### Quota usage API
 

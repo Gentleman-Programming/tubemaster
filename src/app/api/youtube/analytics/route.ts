@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { withAuditRoute } from "@/lib/audit/request";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { createYoutubeAnalyticsSummary } from "@/lib/youtube-analytics-summary";
@@ -59,7 +60,7 @@ export function createAnalyticsGetHandler(
     }
   };
 }
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   try {
     return await createAnalyticsGetHandler()(new URL(request.url));
   } catch {
@@ -73,3 +74,5 @@ export async function GET(request: Request) {
     );
   }
 }
+
+export const GET = withAuditRoute("youtube.analytics.summary", getHandler);

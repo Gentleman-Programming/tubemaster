@@ -4,10 +4,13 @@ import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import path from "path";
 import { eq } from "drizzle-orm";
 import { initializeSocialTables } from "./social/storage";
+import { SQLiteAuditRepository } from "./audit/repository";
 
 const rawClient = createClient({
   url: `file:${path.join(process.cwd(), "data", "playlist-manager.db")}`,
 });
+
+const auditEventRepository = new SQLiteAuditRepository(rawClient);
 
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
@@ -113,6 +116,7 @@ async function initializeDatabase() {
     // Column already exists
   }
 
+  await auditEventRepository.initialize();
   await initializeSocialTables(rawClient);
 }
 
@@ -146,6 +150,7 @@ const client = new Proxy(rawClient, {
 });
 
 export const quotaClient = client;
+export { auditEventRepository };
 
 export const db = drizzle(client, { schema: { users, rules, transcriptIndexEntries } });
 

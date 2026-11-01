@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { withAuditRoute } from "@/lib/audit/request";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { DomainError } from "@/lib/video-metadata/contracts";
@@ -45,4 +46,4 @@ export function createBatchConfirmationPostHandler(
   };
 }
 
-export const POST = createBatchConfirmationPostHandler();
+export const POST = withAuditRoute("video-metadata.batch-confirmation", createBatchConfirmationPostHandler());

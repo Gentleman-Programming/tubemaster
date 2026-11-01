@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { withAuditRoute } from "@/lib/audit/request";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { DomainError } from "@/lib/video-metadata/contracts";
@@ -8,7 +9,7 @@ import { parseVideoMetadataJsonBody } from "../parse-json-body";
 
 const core = createVideoMetadataCore();
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -44,3 +45,5 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export const POST = withAuditRoute("video-metadata.preview", postHandler);

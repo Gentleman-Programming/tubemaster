@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { withAuditRoute } from "@/lib/audit/request";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { DomainError } from "@/lib/video-metadata/contracts";
@@ -57,4 +58,4 @@ export function createTranscriptPostHandler(
   };
 }
 
-export const POST = createTranscriptPostHandler();
+export const POST = withAuditRoute("video-metadata.transcript", createTranscriptPostHandler());

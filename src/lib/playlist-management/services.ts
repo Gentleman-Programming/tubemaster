@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { emitAuditEvent, type VideoMetadataLogger } from "../video-metadata/adapters/logger";
+import { emitAuditEvent, getCredentialUserId, type VideoMetadataLogger } from "../video-metadata/adapters/logger";
 import { YOUTUBE_READ_SCOPE, YOUTUBE_WRITE_SCOPE } from "@/lib/auth";
 import type { QuotaAccountant, QuotaOperation } from "../quota/accountant";
 import {
@@ -111,9 +111,9 @@ type ServiceDependencies = {
   logger?: VideoMetadataLogger;
 };
 
-function auditScope(deps: ServiceDependencies, operation: string, operationId: string, target: Record<string, unknown> = {}) {
+function auditScope(deps: ServiceDependencies, operation: string, operationId: string, target: Record<string, unknown> = {}, userId?: string | null) {
   let channelId: string | undefined;
-  const emit = (phase: string, extra: Record<string, unknown> = {}) => emitAuditEvent(deps.logger, `playlist.${operation}.${phase}`, { operationId, channelId, ...target, ...extra });
+  const emit = (phase: string, extra: Record<string, unknown> = {}) => emitAuditEvent(deps.logger, `playlist.${operation}.${phase}`, { operationId, channelId, ...target, ...extra }, userId);
   emit("start");
   return { emit, setChannelId: (id: string) => { channelId = id; } };
 }
@@ -194,7 +194,7 @@ export function createPlaylistManagementServices(deps: ServiceDependencies) {
     async listPlaylists(input: unknown) {
       const parsedInput = parseWithSchema(playlistListInputSchema, input, "playlist list input");
       const operationId = deps.operationIdFactory?.() ?? randomUUID();
-      const audit = auditScope(deps, "list", operationId);
+      const audit = auditScope(deps, "list", operationId, {}, getCredentialUserId(parsedInput.credentialRef));
       try {
         const credentials = await deps.authResolver.resolve({
           credentialRef: parsedInput.credentialRef,
@@ -219,7 +219,7 @@ export function createPlaylistManagementServices(deps: ServiceDependencies) {
         "playlist create input"
       );
       const operationId = deps.operationIdFactory?.() ?? randomUUID();
-      const audit = auditScope(deps, "create", operationId);
+      const audit = auditScope(deps, "create", operationId, {}, getCredentialUserId(parsedInput.credentialRef));
       try {
         const credentials = await deps.authResolver.resolve({
           credentialRef: parsedInput.credentialRef,
@@ -268,7 +268,7 @@ export function createPlaylistManagementServices(deps: ServiceDependencies) {
         "playlist update input"
       );
       const operationId = deps.operationIdFactory?.() ?? randomUUID();
-      const audit = auditScope(deps, "update", operationId, { playlistId: parsedInput.playlistId });
+      const audit = auditScope(deps, "update", operationId, { playlistId: parsedInput.playlistId }, getCredentialUserId(parsedInput.credentialRef));
       try {
         const credentials = await deps.authResolver.resolve({
           credentialRef: parsedInput.credentialRef,
@@ -351,7 +351,7 @@ export function createPlaylistManagementServices(deps: ServiceDependencies) {
         input,
         "playlist delete input"
       );
-      const audit = auditScope(deps, "delete", deps.operationIdFactory?.() ?? randomUUID(), { playlistId: parsedInput.playlistId });
+      const audit = auditScope(deps, "delete", deps.operationIdFactory?.() ?? randomUUID(), { playlistId: parsedInput.playlistId }, getCredentialUserId(parsedInput.credentialRef));
       try {
         const credentials = await deps.authResolver.resolve({
           credentialRef: parsedInput.credentialRef,
@@ -424,7 +424,7 @@ export function createPlaylistManagementServices(deps: ServiceDependencies) {
         input,
         "playlist add videos input"
       );
-      const audit = auditScope(deps, "add_videos", deps.operationIdFactory?.() ?? randomUUID(), { playlistId: parsedInput.playlistId });
+      const audit = auditScope(deps, "add_videos", deps.operationIdFactory?.() ?? randomUUID(), { playlistId: parsedInput.playlistId }, getCredentialUserId(parsedInput.credentialRef));
       try {
         const credentials = await deps.authResolver.resolve({
           credentialRef: parsedInput.credentialRef,
@@ -478,7 +478,7 @@ export function createPlaylistManagementServices(deps: ServiceDependencies) {
         "playlist remove videos input"
       );
       const operationId = deps.operationIdFactory?.() ?? randomUUID();
-      const audit = auditScope(deps, "remove_videos", operationId, { playlistId: parsedInput.playlistId });
+      const audit = auditScope(deps, "remove_videos", operationId, { playlistId: parsedInput.playlistId }, getCredentialUserId(parsedInput.credentialRef));
       try {
         const credentials = await deps.authResolver.resolve({
           credentialRef: parsedInput.credentialRef,

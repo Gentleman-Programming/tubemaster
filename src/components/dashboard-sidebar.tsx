@@ -13,6 +13,7 @@ const links = [
   { href: "/dashboard/social", label: "Social publishing" },
   { href: "/dashboard/calendar", label: "Calendar" },
   { href: "/dashboard/semantic-search", label: "Semantic search" },
+  { href: "/dashboard/audit", label: "Audit history" },
 ];
 
 /** Pure navigation list, rendered against an explicit pathname. */

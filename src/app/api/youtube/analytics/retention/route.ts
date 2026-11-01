@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { withAuditRoute } from "@/lib/audit/request";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { createYoutubeAnalyticsRetention } from "@/lib/youtube-analytics-summary";
@@ -50,10 +51,12 @@ export function createAnalyticsRetentionGetHandler(
   };
 }
 
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   try {
     return await createAnalyticsRetentionGetHandler()(new URL(request.url));
   } catch {
     return NextResponse.json({ kind: "analytics-retention-error", code: "ANALYTICS_API_ERROR", message: "Internal error" }, { status: 500 });
   }
 }
+
+export const GET = withAuditRoute("youtube.analytics.retention", getHandler);

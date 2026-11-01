@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { withAuditRoute } from "@/lib/audit/request";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { createScheduledYoutubeVideos } from "@/lib/youtube-schedule-calendar";
@@ -46,10 +47,12 @@ export function createScheduledVideosGetHandler(
   };
 }
 
-export async function GET() {
+async function getHandler() {
   try {
     return await createScheduledVideosGetHandler()();
   } catch {
     return internalError();
   }
 }
+
+export const GET = withAuditRoute("youtube.scheduled.list", getHandler);
