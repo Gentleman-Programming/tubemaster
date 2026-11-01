@@ -80,7 +80,8 @@ async function initializeDatabase() {
       operation TEXT NOT NULL,
       estimated_units INTEGER NOT NULL,
       timestamp TEXT NOT NULL,
-      bucket_start TEXT NOT NULL
+      bucket_start TEXT NOT NULL,
+      channel_id TEXT
     );
     CREATE TABLE IF NOT EXISTS transcript_index_entries (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,6 +92,12 @@ async function initializeDatabase() {
       entry_order INTEGER NOT NULL
     );
   `);
+
+  // Migration: add quota channel_id if missing (idempotent)
+  const quotaColumns = await rawClient.execute("PRAGMA table_info(quota_entries)");
+  if (!quotaColumns.rows.some((row) => row.name === "channel_id")) {
+    await rawClient.execute("ALTER TABLE quota_entries ADD COLUMN channel_id TEXT");
+  }
 
   // Migration: add selected_channel_id if missing (idempotent)
   try {

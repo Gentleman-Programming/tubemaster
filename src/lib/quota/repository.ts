@@ -4,6 +4,7 @@ import type { QuotaEntry, QuotaOperation } from "./accountant";
 export type QuotaUsageSummary = {
   bucketStart: string;
   operation: QuotaOperation;
+  channelId?: string | null;
   operationCount: number;
   estimatedUnits: number;
 };
@@ -12,6 +13,7 @@ export type QuotaUsageFilter = {
   bucketStart?: string;
   operation?: QuotaOperation;
   operationId?: string;
+  channelId?: string | null;
 };
 
 export type QuotaScope =
@@ -36,17 +38,23 @@ export class SQLiteQuotaRepository {
       operation TEXT NOT NULL,
       estimated_units INTEGER NOT NULL,
       timestamp TEXT NOT NULL,
-      bucket_start TEXT NOT NULL
+      bucket_start TEXT NOT NULL,
+      channel_id TEXT
     )`);
+    const columns = await this.client.execute("PRAGMA table_info(quota_entries)");
+    if (!columns.rows.some((row) => row.name === "channel_id")) {
+      await this.client.execute("ALTER TABLE quota_entries ADD COLUMN channel_id TEXT");
+    }
   }
 
   async append(entry: StoredQuotaEntry): Promise<void> {
     await this.client.execute({
       sql: `INSERT INTO quota_entries
-        (scope_kind, user_id, operation_id, operation, estimated_units, timestamp, bucket_start)
-        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        (scope_kind, user_id, operation_id, operation, estimated_units, timestamp, bucket_start, channel_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [entry.scope.kind, entry.scope.kind === "user" ? entry.scope.userId : null,
-        entry.operationId, entry.operation, entry.estimatedUnits, entry.timestamp, entry.bucketStart],
+        entry.operationId, entry.operation, entry.estimatedUnits, entry.timestamp, entry.bucketStart,
+        entry.channelId ?? null],
     });
   }
 
@@ -68,15 +76,20 @@ export class SQLiteQuotaRepository {
       clauses.push("operation_id = ?");
       args.push(filters.operationId);
     }
+    if (filters.channelId !== undefined) {
+      clauses.push("channel_id IS ?");
+      args.push(filters.channelId);
+    }
     const result = await this.client.execute({
-      sql: `SELECT bucket_start, operation, SUM(estimated_units) AS units, COUNT(*) AS entries
+      sql: `SELECT bucket_start, operation, channel_id, SUM(estimated_units) AS units, COUNT(*) AS entries
         FROM quota_entries WHERE ${clauses.join(" AND ")}
-        GROUP BY bucket_start, operation ORDER BY bucket_start, operation`,
+        GROUP BY bucket_start, operation, channel_id ORDER BY bucket_start, operation, channel_id`,
       args,
     });
     return result.rows.map((row) => ({
       bucketStart: String(row.bucket_start),
       operation: String(row.operation) as QuotaOperation,
+      channelId: row.channel_id == null ? null : String(row.channel_id),
       operationCount: Number(row.entries),
       estimatedUnits: Number(row.units),
     }));

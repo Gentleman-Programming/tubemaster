@@ -1,0 +1,4 @@
+- T1 S1-S2: Reproduce and map quota schema mismatch — pending
+- T2 S1,S3-S4: Add idempotent channel_id migration and persistence — pending
+- T3 S2-S4: Add focused regression coverage — pending
+- T4 S1-S4: Run validation and record evidence — pending
