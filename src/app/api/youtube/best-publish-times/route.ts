@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { withAuditRoute } from "@/lib/audit/request";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { createBestPublishTimes } from "@/lib/youtube-best-publish-times";
@@ -59,10 +60,12 @@ export function createBestPublishTimesGetHandler(
     }
   };
 }
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   try {
     return await createBestPublishTimesGetHandler()(new URL(request.url));
   } catch {
     return internalError();
   }
 }
+
+export const GET = withAuditRoute("youtube.best-publish-times", getHandler);

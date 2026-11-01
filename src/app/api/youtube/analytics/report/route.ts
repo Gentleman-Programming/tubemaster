@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { withAuditRoute } from "@/lib/audit/request";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { createYoutubeAnalyticsReport } from "@/lib/youtube-analytics-summary";
@@ -62,10 +63,12 @@ export function createAnalyticsReportGetHandler(
   };
 }
 
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   try {
     return await createAnalyticsReportGetHandler()(new URL(request.url));
   } catch {
     return NextResponse.json({ kind: "analytics-multi-video-report-error", code: "ANALYTICS_API_ERROR", message: "Unable to load analytics report" }, { status: 502 });
   }
 }
+
+export const GET = withAuditRoute("youtube.analytics.report", getHandler);

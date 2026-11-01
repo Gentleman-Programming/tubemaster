@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { withAuditRoute } from "@/lib/audit/request";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getAuthenticatedYoutube } from "@/lib/youtube";
@@ -19,7 +20,7 @@ export function filterPrivateVideos(videos: ListedVideo[], statuses: VideoStatus
   return videos.filter((video) => privateVideoIds.has(video.videoId));
 }
 
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -57,3 +58,5 @@ export async function GET(request: Request) {
   });
   return NextResponse.json(filterPrivateVideos(listed.videos, statuses.data.items ?? []));
 }
+
+export const GET = withAuditRoute("youtube.videos.list", getHandler);

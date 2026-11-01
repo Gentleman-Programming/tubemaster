@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAuditRoute } from "@/lib/audit/request";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db, rules } from "@/lib/db";
 import { eq, and } from "drizzle-orm";
 
-export async function GET() {
+async function getHandler() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -18,7 +19,7 @@ export async function GET() {
   return NextResponse.json(userRules);
 }
 
-export async function POST(request: NextRequest) {
+async function postHandler(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json(rule, { status: 201 });
 }
 
-export async function DELETE(request: NextRequest) {
+async function deleteHandler(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -69,3 +70,7 @@ export async function DELETE(request: NextRequest) {
 
   return NextResponse.json({ ok: true });
 }
+
+export const GET = withAuditRoute("rules.list", getHandler);
+export const POST = withAuditRoute("rules.create", postHandler);
+export const DELETE = withAuditRoute("rules.delete", deleteHandler);
