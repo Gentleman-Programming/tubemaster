@@ -12,6 +12,7 @@ const links = [
   { href: "/dashboard/quota", label: "Quota usage" },
   { href: "/dashboard/social", label: "Social publishing" },
   { href: "/dashboard/calendar", label: "Calendar" },
+  { href: "/dashboard/semantic-search", label: "Semantic search" },
 ];
 
 /** Pure navigation list, rendered against an explicit pathname. */
