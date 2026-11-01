@@ -1,4 +1,4 @@
-import { getSelectedChannelId, setSelectedChannelId } from "@/lib/db";
+import { auditEventRepository, getSelectedChannelId, setSelectedChannelId } from "@/lib/db";
 import { createWriteContextYoutubeApiAdapter } from "@/lib/write-context/adapters/youtube-api";
 import { createWriteContextService } from "@/lib/write-context/service";
 import { createMetadataGenerator } from "./adapters/metadata-generator";
@@ -28,7 +28,7 @@ export function createVideoMetadataCore() {
     youtubeApi: createYoutubeApiAdapter(),
     transcriptProvider: createTranscriptProvider(),
     metadataGenerator: createMetadataGenerator(),
-    logger: createDefaultLogger(),
+    logger: createDefaultLogger({ sink: auditEventRepository }),
     writeContext,
     channelSelectionStore: {
       setSelectedChannelId,

@@ -1,0 +1,11 @@
+Feature: tubemaster-durable-audit-history
+
+Reconciled task mirror for the durable audit/history slice.
+
+- T1 S1,S4,S5: Define schema, sanitizer boundary, and adapter contract — pending
+- T2 S1,S2,S4: Persist events, isolate users, and clean 90-day retention — pending
+- T3 S3,S5: Add authenticated read-only API and dashboard UI — pending
+- T4 S1-S5: Add public-interface tests — pending
+- T5 S1-S5: Update docs and validate — pending
+
+Approved issue: https://github.com/Gentleman-Programming/tubemaster/issues/178 (`status:approved`, `type:feature`).

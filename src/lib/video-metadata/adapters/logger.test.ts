@@ -18,6 +18,32 @@ test("audit logger failures never change operation outcome", () => {
   assert.doesNotThrow(() => emitAuditEvent({ info: () => { throw Error("logger failed"); }, error: () => { throw Error("logger failed"); } }, "playlist.create.failure", { code: "update_failed" }));
 });
 
+test("durable sink receives user-scoped events without blocking or leaking unsafe context", async () => {
+  const events: unknown[] = [];
+  const logger = createDefaultLogger({
+    userId: "user-1",
+    sink: {
+      append: async (event) => {
+        events.push(event);
+      },
+    },
+  });
+  emitAuditEvent(logger, "playlist.create.success", {
+    operationId: "op-1",
+    playlistId: "playlist-1",
+    title: "private title",
+    credentials: { accessToken: "secret" },
+  });
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.deepEqual(events, [{
+    userId: "user-1",
+    operationId: "op-1",
+    event: "playlist.create.success",
+    context: { operationId: "op-1", playlistId: "playlist-1" },
+    timestamp: (events[0] as { timestamp: Date }).timestamp,
+  }]);
+});
+
 test("default logger emits only filtered audit context", () => {
   const original = process.stderr.write;
   const lines: string[] = [];
