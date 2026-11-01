@@ -50,6 +50,44 @@ export const transcriptIndexEntries = sqliteTable("transcript_index_entries", {
   order: integer("entry_order").notNull(),
 });
 
+export const semanticIndexDocuments = sqliteTable("semantic_index_documents", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("user_id").notNull(),
+  channelId: text("channel_id").notNull(),
+  videoId: text("video_id").notNull(),
+  chunkingVersion: text("chunking_version").notNull(),
+  sourceRevision: text("source_revision").notNull(),
+  status: text("status").notNull(),
+  chunkCount: integer("chunk_count").notNull(),
+  characterCount: integer("character_count").notNull(),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const semanticIndexChunks = sqliteTable("semantic_index_chunks", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  documentId: integer("document_id").notNull(),
+  userId: text("user_id").notNull(),
+  channelId: text("channel_id").notNull(),
+  videoId: text("video_id").notNull(),
+  chunkIndex: integer("chunk_index").notNull(),
+  text: text("text").notNull(),
+  identity: text("identity").notNull(),
+  order: integer("entry_order").notNull(),
+});
+
+export const semanticIndexUsage = sqliteTable("semantic_index_usage", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("user_id").notNull(),
+  channelId: text("channel_id").notNull(),
+  operationId: text("operation_id").notNull(),
+  videoId: text("video_id").notNull(),
+  bucketStart: text("bucket_start").notNull(),
+  chunkCount: integer("chunk_count").notNull(),
+  characterCount: integer("character_count").notNull(),
+  timestamp: text("timestamp").notNull(),
+});
+
 async function initializeDatabase() {
   await rawClient.executeMultiple(`
     CREATE TABLE IF NOT EXISTS users (
@@ -93,6 +131,44 @@ async function initializeDatabase() {
       text TEXT NOT NULL,
       identity TEXT NOT NULL,
       entry_order INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS semantic_index_documents (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      video_id TEXT NOT NULL,
+      chunking_version TEXT NOT NULL,
+      source_revision TEXT NOT NULL,
+      status TEXT NOT NULL,
+      chunk_count INTEGER NOT NULL,
+      character_count INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE (user_id, channel_id, video_id)
+    );
+    CREATE TABLE IF NOT EXISTS semantic_index_chunks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      document_id INTEGER NOT NULL,
+      user_id TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      video_id TEXT NOT NULL,
+      chunk_index INTEGER NOT NULL,
+      text TEXT NOT NULL,
+      identity TEXT NOT NULL,
+      entry_order INTEGER NOT NULL,
+      UNIQUE (user_id, channel_id, video_id, identity)
+    );
+    CREATE TABLE IF NOT EXISTS semantic_index_usage (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      operation_id TEXT NOT NULL,
+      video_id TEXT NOT NULL,
+      bucket_start TEXT NOT NULL,
+      chunk_count INTEGER NOT NULL,
+      character_count INTEGER NOT NULL,
+      timestamp TEXT NOT NULL,
+      UNIQUE (user_id, channel_id, operation_id)
     );
   `);
 
@@ -152,7 +228,16 @@ const client = new Proxy(rawClient, {
 export const quotaClient = client;
 export { auditEventRepository };
 
-export const db = drizzle(client, { schema: { users, rules, transcriptIndexEntries } });
+export const db = drizzle(client, {
+  schema: {
+    users,
+    rules,
+    transcriptIndexEntries,
+    semanticIndexDocuments,
+    semanticIndexChunks,
+    semanticIndexUsage,
+  },
+});
 
 export type StoredOAuthToken = {
   userId: string;
