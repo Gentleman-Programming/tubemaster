@@ -39,11 +39,11 @@ Every semantic repository operation must require authenticated user and channel 
 Local indexing accounting must not be represented as YouTube API units, and existing public contracts must remain compatible.
 
 ## Tasks
-- T1 (S1-S5): Define versioned chunk/index request, result, status, limit, and typed-error contracts; route: implementation; commit: pending.
-- T2 (S1,S4,S5): Add additive scoped semantic document/chunk persistence and repository replacement/list/delete operations; route: implementation; commit: pending.
-- T3 (S4,S5): Add transactional replacement and separate local usage accounting with no-partial-write limits; route: implementation; commit: pending.
-- T4 (S1-S5): Add focused contract, isolation, rollback, quota-limit, and unchanged-contract regression tests; route: tests; commit: pending.
-- T5 (S1-S5): Update interface documentation, run validation, and record evidence; route: verification; commit: pending.
+- T1 (S1-S5): Define versioned chunk/index request, result, status, limit, and typed-error contracts; route: implementation; commit: `f82694e`.
+- T2 (S1,S4,S5): Add additive scoped semantic document/chunk persistence and repository replacement/list/delete operations; route: implementation; commit: `f82694e`.
+- T3 (S4,S5): Add transactional replacement and separate local usage accounting with no-partial-write limits; route: implementation; commit: `f82694e`.
+- T4 (S1-S5): Add focused contract, isolation, rollback, quota-limit, and unchanged-contract regression tests; route: tests; commit: `f82694e`.
+- T5 (S1-S5): Update interface documentation, run validation, and record evidence; route: verification; commit: `f82694e`.
 
 ## Log
 - L1: 1. Planificar semantic indexing sin IA
@@ -52,4 +52,5 @@ Local indexing accounting must not be represented as YouTube API units, and exis
 - L2: User authorized creating and approving an issue for the provider-free semantic indexing foundation.
 - L3: Issue #184 created with the official Feature request form and exactly `type:feature`.
 - L4: Issue #184 approved with exactly `status:approved` and `type:feature` after fresh target-host authority verification and read-back.
-- L5: Focused semantic indexing tests pass 5/5 and TypeScript passes; implementation and docs remain uncommitted pending full validation.
+- L5: Focused semantic indexing tests pass 6/6 and TypeScript passes after explicit chunking-version validation was added.
+- L6: Full npm test, lint, TypeScript, build, diff check, and proportional authenticated UI smoke passed. Work-unit commit: `f82694e`.
