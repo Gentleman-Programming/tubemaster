@@ -11,7 +11,7 @@ TubeMaster is a channel-operations workspace across Web UI, CLI, MCP, and API su
 | Playlists | Web UI actions; CLI and MCP list/create/update/delete/add/remove; selected UI API routes |
 | Rules | Web UI create/list/delete/run; `/api/rules` and `/api/run` |
 | Metadata preview/apply, transcript acquisition | CLI, MCP, and metadata API; apply requires expected channel and supports dry run |
-| Transcript semantic search | Authenticated `/dashboard/semantic-search` UI shell; provider, indexing, persistence, and search execution are deferred |
+| Transcript semantic search | Authenticated `/dashboard/semantic-search` UI with current-channel video listing and selection; provider, indexing, persistence, and search execution are deferred |
 | Reviewed multi-video upload and recovery | Web UI upload, CLI `upload multi|reconcile|reconcile-many|cancel`, MCP `upload_multi|upload_reconcile|upload_reconcile_many|upload_cancel`, and authenticated recovery/upload APIs; preview and explicit confirmation remain required |
 | Scheduling and calendar | Web UI calendar plus authenticated schedule/status routes; scheduling remains explicitly confirmed and channel-bound |
 | Social publishing | Web UI and MCP Instagram/TikTok flows with stage → preview → human confirmation → publish/schedule/cancel |
@@ -23,7 +23,7 @@ Expanded analytics/reporting and future metadata, transcript, and search increme
 
 ## Semantic search roadmap
 
-The dedicated `/dashboard/semantic-search` page currently provides the authenticated UI shell only. It validates the video identifier and query locally, then communicates that model integration is pending; it does not call an embedding provider, persist vectors, or return search matches.
+The dedicated `/dashboard/semantic-search` page lists videos from the authenticated channel through the existing `/api/youtube/videos` read-only route. Users can filter loaded videos, select one, several, or all visible videos, clear selection, and retain a manual URL/video-ID fallback. Selection does not call an embedding provider, persist vectors, mutate YouTube, or return search matches; the provider/model integration remains deferred.
 
 Future work should choose and document the embedding model/provider before adding server-side indexing and search routes. The integration should preserve authenticated user isolation, keep provider credentials server-side, define transcript chunking and replacement behavior, and add focused route/service tests plus an authenticated browser smoke test.
 

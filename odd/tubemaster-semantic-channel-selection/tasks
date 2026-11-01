@@ -1,0 +1,8 @@
+Feature: tubemaster-semantic-channel-selection
+
+Reconciled task mirror for the provider-neutral Semantic Search channel-selection slice.
+
+- T1 S1,S4: Define selection state and response contract — `d525bcf`
+- T2 S1,S3,S4: Add authenticated channel video listing and selection UI — `d525bcf`
+- T3 S2-S4: Add focused regression tests — `d525bcf`
+- T4 S1-S4: Update docs and validate — `d525bcf` (final evidence recorded in parent spec)
