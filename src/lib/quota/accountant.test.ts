@@ -58,6 +58,53 @@ test("in-memory quota accountant records safe entries and accumulates repeated c
   assert.equal(accountant.entries()[0].operationId, "operation-1");
 });
 
+test("quota schema adds channel identity without breaking legacy rows", async () => {
+  const client = createClient({ url: ":memory:" });
+  try {
+    await client.execute(`CREATE TABLE quota_entries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      scope_kind TEXT NOT NULL,
+      user_id TEXT,
+      operation_id TEXT NOT NULL,
+      operation TEXT NOT NULL,
+      estimated_units INTEGER NOT NULL,
+      timestamp TEXT NOT NULL,
+      bucket_start TEXT NOT NULL
+    )`);
+    await client.execute({
+      sql: `INSERT INTO quota_entries
+        (scope_kind, user_id, operation_id, operation, estimated_units, timestamp, bucket_start)
+        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      args: ["global", null, "legacy", "videos.list", 1, "2026-01-01T00:00:00.000Z", "2026-01-01"],
+    });
+    const repository = new SQLiteQuotaRepository(client);
+    await repository.initialize();
+    await repository.initialize();
+    await repository.append({
+      operationId: "channel-aware",
+      operation: "videos.list",
+      estimatedUnits: 1,
+      timestamp: "2026-01-01T00:01:00.000Z",
+      bucketStart: "2026-01-01",
+      scope: { kind: "global" },
+      channelId: "UC_ACTIVE",
+    });
+
+    const columns = await client.execute("PRAGMA table_info(quota_entries)");
+    assert.ok(columns.rows.some((row) => row.name === "channel_id"));
+    const rows = await client.execute({
+      sql: "SELECT operation_id, channel_id FROM quota_entries ORDER BY operation_id",
+      args: [],
+    });
+    assert.deepEqual(rows.rows.map((row) => [row.operation_id, row.channel_id]), [
+      ["channel-aware", "UC_ACTIVE"],
+      ["legacy", null],
+    ]);
+  } finally {
+    client.close();
+  }
+});
+
 test("durable entries aggregate by bucket and isolate user/global scopes", async () => {
   const client = createClient({ url: ":memory:" });
   try {

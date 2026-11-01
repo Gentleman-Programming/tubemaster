@@ -335,6 +335,18 @@ test("initializeDatabase still creates the existing tables plus the social table
   const originalCwd = process.cwd();
   const directory = mkdtempSync(join(tmpdir(), "tubemaster-db-"));
   mkdirSync(join(directory, "data"));
+  const existingClient = createClient({ url: `file:${join(directory, "data", "playlist-manager.db")}` });
+  await existingClient.execute(`CREATE TABLE quota_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    scope_kind TEXT NOT NULL,
+    user_id TEXT,
+    operation_id TEXT NOT NULL,
+    operation TEXT NOT NULL,
+    estimated_units INTEGER NOT NULL,
+    timestamp TEXT NOT NULL,
+    bucket_start TEXT NOT NULL
+  )`);
+  existingClient.close();
   process.chdir(directory);
   try {
     const { databaseInitialization, quotaClient } = await import("../../db");
@@ -348,6 +360,8 @@ test("initializeDatabase still creates the existing tables plus the social table
       userColumns.rows.map((row) => String(row.name)),
       ["id", "name", "email", "image", "access_token", "refresh_token", "token_expiry", "oauth_scope", "selected_channel_id"],
     );
+    const quotaColumns = await quotaClient.execute("PRAGMA table_info(quota_entries)");
+    assert.ok(quotaColumns.rows.some((row) => row.name === "channel_id"));
     quotaClient.close();
   } finally {
     process.chdir(originalCwd);

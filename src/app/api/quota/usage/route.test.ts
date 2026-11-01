@@ -70,13 +70,14 @@ test("repository aggregates only exact scope and parameterizes filters", async (
   const calls: { sql: string; args: unknown[] }[] = [];
   const client = { execute: async (statement: { sql: string; args: unknown[] }) => {
     calls.push(statement);
-    return { rows: [{ bucket_start: "2026-04-01", operation: "videos.list", units: 3, entries: 2 }] };
+    return { rows: [{ bucket_start: "2026-04-01", operation: "videos.list", channel_id: "channel-a", units: 3, entries: 2 }] };
   } } as unknown as Pick<Client, "execute">;
   const repo = new SQLiteQuotaRepository(client);
-  assert.deepEqual(await repo.summarize({ kind: "user", userId: "u1" }, { bucketStart: "2026-04-01", operation: "videos.list", operationId: "op-1" }),
-    [{ bucketStart: "2026-04-01", operation: "videos.list", estimatedUnits: 3, operationCount: 2 }]);
-  assert.deepEqual(calls[0].args, ["user", "u1", "2026-04-01", "videos.list", "op-1"]);
+  assert.deepEqual(await repo.summarize({ kind: "user", userId: "u1" }, { bucketStart: "2026-04-01", operation: "videos.list", operationId: "op-1", channelId: "channel-a" }),
+    [{ bucketStart: "2026-04-01", operation: "videos.list", channelId: "channel-a", estimatedUnits: 3, operationCount: 2 }]);
+  assert.deepEqual(calls[0].args, ["user", "u1", "2026-04-01", "videos.list", "op-1", "channel-a"]);
   assert.match(calls[0].sql, /scope_kind = \? AND user_id IS \?/);
+  assert.match(calls[0].sql, /channel_id IS \?/);
   assert.doesNotMatch(calls[0].sql, /op-1|u1/);
   await repo.summarize({ kind: "global" });
   assert.deepEqual(calls[1].args, ["global", null]);
