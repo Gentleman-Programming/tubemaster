@@ -28,9 +28,9 @@ Preserve existing sanitized event vocabulary and context allowlists, server-side
 
 ## Tasks
 - T1 (S1,S4,S5): Define the durable event schema, sanitizer boundary, and operation adapter contract; commit: `33dfb7a`.
-- T2 (S1,S2,S4): Persist all covered lifecycle events with user isolation and bounded 90-day cleanup; commit: `33dfb7a` (metadata/playlist adapters complete; broader adapters remain).
+- T2 (S1,S2,S4): Persist all covered lifecycle events with user isolation and bounded 90-day cleanup; commits: `33dfb7a`, `2e95049`, `fd05a36`.
 - T3 (S3,S5): Add authenticated read-only history API and dashboard UI with explicit empty/loading/error states; commit: `33dfb7a`.
-- T4 (S1-S5): Add public-interface tests for persistence, retention, isolation, sanitizer rejection, read-only access, and failure non-interference; commit: `33dfb7a` (focused coverage; broader adapters remain).
+- T4 (S1-S5): Add public-interface tests for persistence, retention, isolation, sanitizer rejection, read-only access, and failure non-interference; commit: `33dfb7a`.
 - T5 (S1-S5): Update roadmap/interfaces documentation and validate the complete work unit; commit: `5fe0c67` (interfaces documentation; final validation pending).
 
 ## Log
@@ -39,3 +39,5 @@ Preserve existing sanitized event vocabulary and context allowlists, server-side
 - L3: User selected the exact options `Todas las operaciones`, `90 días fijos`, and `UI + API` for the first slice.
 - L4: Approved implementation issue: https://github.com/Gentleman-Programming/tubemaster/issues/178 (labels: `status:approved`, `type:feature`).
 - L5: Focused tests pass for repository, retention, sanitizer/sink isolation, and authenticated history API; `npx tsc --noEmit`, `npm run lint`, and `git diff --check` pass for the implemented slice.
+- L6: Full `npm test` passes (48 test groups, 0 failures) and `npm run build` passes with `/dashboard/audit` and `/api/audit/history` included.
+- L7: Request-level audit coverage now wraps the authenticated operation routes in commits `2e95049` and `fd05a36`; all stored events remain sanitized and user-scoped.
