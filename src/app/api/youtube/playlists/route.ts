@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { withAuditRoute } from "@/lib/audit/request";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { createPlaylistManagementCore } from "@/lib/playlist-management";
@@ -44,4 +45,4 @@ export function createPlaylistsGetHandler(
   };
 }
 
-export const GET = createPlaylistsGetHandler();
+export const GET = withAuditRoute("youtube.playlists.list", createPlaylistsGetHandler());

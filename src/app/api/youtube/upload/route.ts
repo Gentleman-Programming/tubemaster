@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { withAuditRoute } from "@/lib/audit/request";
 import { authOptions } from "@/lib/auth";
 import { createVideoUploadCore } from "@/lib/video-upload";
 import { createUploadAdapter } from "@/lib/video-upload/adapter";
@@ -41,4 +42,4 @@ export function createUploadPostHandler(deps: {
   };
 }
 
-export const POST = createUploadPostHandler();
+export const POST = withAuditRoute("youtube.upload", createUploadPostHandler());

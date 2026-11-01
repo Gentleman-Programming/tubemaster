@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { withAuditRoute } from "@/lib/audit/request";
 import { authOptions } from "@/lib/auth";
 import { createVideoRecoveryCore } from "@/lib/video-recovery";
 import { isDomainError } from "@/lib/video-metadata/contracts";
@@ -36,4 +37,4 @@ export function createRecoveryReconcilePostHandler(deps: {
   };
 }
 
-export const POST = createRecoveryReconcilePostHandler();
+export const POST = withAuditRoute("youtube.recovery.reconcile", createRecoveryReconcilePostHandler());

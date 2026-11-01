@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { withAuditRoute } from "@/lib/audit/request";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { quotaClient } from "@/lib/db";
@@ -116,4 +117,4 @@ export function createQuotaUsageGetHandler(
   };
 }
 
-export const GET = createQuotaUsageGetHandler();
+export const GET = withAuditRoute("quota.usage", createQuotaUsageGetHandler());

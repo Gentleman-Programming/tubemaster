@@ -1,4 +1,5 @@
 import type { SocialPostStatus } from "@/lib/social/contracts";
+import { withAuditRoute } from "@/lib/audit/request";
 import { previewBodySchema, type PreviewInput } from "@/lib/social/queue/service";
 import { defaultDeps, handle, invalidInput, readJson, type SocialPostsRouteDeps } from "./http";
 
@@ -27,5 +28,5 @@ export function createPostsHandlers(deps: SocialPostsRouteDeps = defaultDeps) {
 }
 
 const handlers = createPostsHandlers();
-export const GET = handlers.GET;
-export const POST = handlers.POST;
+export const GET = withAuditRoute("social.posts.list", handlers.GET);
+export const POST = withAuditRoute("social.posts.create", handlers.POST);

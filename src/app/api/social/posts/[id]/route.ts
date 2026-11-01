@@ -1,3 +1,4 @@
+import { withAuditRoute } from "@/lib/audit/request";
 import { defaultDeps, handle, type IdRouteContext, type SocialPostsRouteDeps } from "../http";
 
 export const runtime = "nodejs";
@@ -9,4 +10,4 @@ export function createPostHandlers(deps: SocialPostsRouteDeps = defaultDeps) {
   };
 }
 
-export const GET = createPostHandlers().GET;
+export const GET = withAuditRoute("social.posts.get", createPostHandlers().GET);

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { withAuditRoute } from "@/lib/audit/request";
 import { scheduleSchema } from "@/lib/social/queue/service";
 import { defaultDeps, handle, invalidInput, readJson, type IdRouteContext, type SocialPostsRouteDeps } from "../../http";
 
@@ -17,4 +18,4 @@ export function createRescheduleHandler(deps: SocialPostsRouteDeps = defaultDeps
     });
 }
 
-export const POST = createRescheduleHandler();
+export const POST = withAuditRoute("social.posts.reschedule", createRescheduleHandler());

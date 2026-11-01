@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { withAuditRoute } from "@/lib/audit/request";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { createPlaylistManagementCore } from "@/lib/playlist-management";
@@ -38,4 +39,4 @@ export function createRemoveFromPlaylistPostHandler(
   };
 }
 
-export const POST = createRemoveFromPlaylistPostHandler();
+export const POST = withAuditRoute("youtube.playlists.remove-videos", createRemoveFromPlaylistPostHandler());

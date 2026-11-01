@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { withAuditRoute } from "@/lib/audit/request";
 import { authOptions } from "@/lib/auth";
 import { StageError, stageVideo } from "@/lib/video-upload/staging";
 
@@ -23,4 +24,4 @@ export function createStagePostHandler(deps: {
   };
 }
 
-export const POST = createStagePostHandler();
+export const POST = withAuditRoute("youtube.upload.stage", createStagePostHandler());

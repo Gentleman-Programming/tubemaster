@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { withAuditRoute } from "@/lib/audit/request";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -95,4 +96,4 @@ export function createChannelInfoGetHandler(
   };
 }
 
-export const GET = createChannelInfoGetHandler();
+export const GET = withAuditRoute("youtube.channel-info", createChannelInfoGetHandler());

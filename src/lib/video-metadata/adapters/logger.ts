@@ -20,12 +20,12 @@ export function getCredentialUserId(value: unknown): string | undefined {
 
 const operations = [
   "video_metadata.list", "video_metadata.preview", "video_metadata.apply",
-  "transcript.get", "playlist.list", "playlist.create", "playlist.update",
+  "transcript.get", "playlist.list", "playlist.create", "playlist.update", "request",
   "playlist.delete", "playlist.add_videos", "playlist.remove_videos",
 ] as const;
 const phases = ["start", "dry_run", "success", "failure"] as const;
 const allowedEvents = new Set<string>(operations.flatMap((operation) => phases.map((phase) => `${operation}.${phase}`)));
-const allowedContext = new Set(["operationId", "channelId", "videoId", "playlistId", "dryRun", "count", "code", "transcriptStatus"]);
+const allowedContext = new Set(["operationId", "operation", "channelId", "videoId", "playlistId", "dryRun", "count", "code", "transcriptStatus"]);
 
 /** Only this entry point should be used for operational audit events. Never forward raw inputs or errors. */
 export function emitAuditEvent(

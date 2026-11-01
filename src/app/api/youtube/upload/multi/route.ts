@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { withAuditRoute } from "@/lib/audit/request";
 import { authOptions } from "@/lib/auth";
 import { createMultiVideoUploadCore } from "@/lib/video-upload";
 import { createMultiUploadAdapter } from "@/lib/video-upload/multi-adapter";
@@ -41,4 +42,4 @@ export function createMultiUploadPostHandler(deps: {
   };
 }
 
-export const POST = createMultiUploadPostHandler();
+export const POST = withAuditRoute("youtube.upload.multi", createMultiUploadPostHandler());

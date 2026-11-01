@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { withAuditRoute } from "@/lib/audit/request";
 import { authOptions } from "@/lib/auth";
 import { quotaClient } from "@/lib/db";
 import { isSocialPlatform, type SocialAccount } from "@/lib/social/contracts";
@@ -54,5 +55,5 @@ const handlers = createSocialAccountsHandlers({
   storage: async () => createSocialStorage({ client: quotaClient, secret: process.env.NEXTAUTH_SECRET ?? "" }),
 });
 
-export const GET = handlers.GET;
-export const DELETE = handlers.DELETE;
+export const GET = withAuditRoute("social.accounts.list", handlers.GET);
+export const DELETE = withAuditRoute("social.accounts.delete", handlers.DELETE);

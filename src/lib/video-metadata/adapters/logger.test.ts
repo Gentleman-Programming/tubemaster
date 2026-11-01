@@ -11,7 +11,11 @@ test("audit events strictly allowlist vocabulary and scalar context", () => {
     count: 2,
   });
   emitAuditEvent(logger, "video_metadata.apply.invalid", { operationId: "op-2" });
-  assert.deepEqual(calls, [{ event: "video_metadata.apply.start", context: { operationId: "op-1", channelId: "UC_1", dryRun: true, count: 2 } }]);
+  emitAuditEvent(logger, "request.start", { operationId: "op-3", operation: "youtube.upload" });
+  assert.deepEqual(calls, [
+    { event: "video_metadata.apply.start", context: { operationId: "op-1", channelId: "UC_1", dryRun: true, count: 2 } },
+    { event: "request.start", context: { operationId: "op-3", operation: "youtube.upload" } },
+  ]);
 });
 
 test("audit logger failures never change operation outcome", () => {

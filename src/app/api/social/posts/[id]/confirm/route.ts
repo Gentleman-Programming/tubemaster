@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { withAuditRoute } from "@/lib/audit/request";
 import { defaultDeps, handle, invalidInput, readJson, type IdRouteContext, type SocialPostsRouteDeps } from "../../http";
 
 export const runtime = "nodejs";
@@ -16,4 +17,4 @@ export function createConfirmHandler(deps: SocialPostsRouteDeps = defaultDeps) {
     });
 }
 
-export const POST = createConfirmHandler();
+export const POST = withAuditRoute("social.posts.confirm", createConfirmHandler());

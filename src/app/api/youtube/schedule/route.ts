@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { withAuditRoute } from "@/lib/audit/request";
 import { authOptions } from "@/lib/auth";
 import { getSelectedChannelId, setSelectedChannelId, quotaClient } from "@/lib/db";
 import { createDurableQuotaAccountant } from "@/lib/quota/accountant";
@@ -48,4 +49,4 @@ export function createSchedulePostHandler(deps: {
   };
 }
 
-export const POST = createSchedulePostHandler();
+export const POST = withAuditRoute("youtube.schedule", createSchedulePostHandler());
