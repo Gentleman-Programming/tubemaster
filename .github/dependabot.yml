@@ -5,3 +5,7 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
+    ignore:
+      # Keep Node type definitions aligned with the runtime Node major used in CI.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
